@@ -1,37 +1,30 @@
-use actix_web::{error, web, FromRequest, HttpResponse, Responder, HttpServer, App, HttpRequest, Result};
+#[macro_use]
+extern crate diesel;
+
+use actix_web::{error, web, FromRequest, HttpResponse, Responder, HttpServer, App, HttpRequest, Result, Resource};
 use actix_http::ResponseBuilder;
 use actix_web::{http::header, http::StatusCode};
-use listenfd::ListenFd;
 use actix_files::Files;
 use serde::{Serialize, Deserialize};
 use failure::Fail;
 use std::collections::HashMap;
 
+use actix_web::{get, middleware, post, Error};
+use diesel::prelude::*;
+use diesel::r2d2::{self, ConnectionManager};
+use uuid::Uuid;
+use diesel::expression::exists::exists;
+
+mod models;
+mod schema;
+mod database;
+
+
+type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 async fn greeting() -> impl Responder
 {
     HttpResponse::Ok().body("Hello actix---web again!")
-}
-
-/// deserialize `UserData` from request's body, max payload size is 1kb
-#[derive(Deserialize)]
-struct UserRegisterData {
-    user_name: String,
-    email: String,
-    password: String
-}
-
-#[derive(Deserialize)]
-struct UserSignInDataRequest {
-    user_name: String,
-    password: String
-}
-
-#[derive(Serialize)]
-struct UserSignInDataResponse {
-    user_name: String,
-    access_type: String,
-    access_token: String
 }
 
 
@@ -40,6 +33,7 @@ enum MyError {
     #[fail(display = "{}", message)]
     Unauthorized { message: String },
 }
+
 
 impl error::ResponseError for MyError {
     fn error_response(&self) -> HttpResponse {
@@ -55,28 +49,95 @@ impl error::ResponseError for MyError {
     }
 }
 
-async fn register_user(user_data: web::Json<UserRegisterData>) -> Result<String, MyError>
+
+async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>) -> Result<Result<String, MyError> , Error>
 {
-    let bad_names = vec!["aaa", "bbb", "ccc"];
-    let bad_emails = vec!["aaa@aaa.com", "bbb@bbb.com", "ccc@ccc.com"];
-    // let greeting = format!("Welcome {}, {}!", user_data.user_name, user_data.email);
     let greeting = "Registration was successfully completed!".to_string();
 
-    match bad_names.iter().find(|&&x| x == user_data.user_name)
-    {
-        Some(_) => Err(MyError::Unauthorized { message: "The name is already in use.".to_string() } ),
-        None =>
+    let conn = pool.get().expect("couldn't get db connection from pool");
+
+    let user = web::block(move || insert_new_user(&user_data, &conn))
+        .await
+        .map_err(|e|
             {
-                match bad_emails.iter().find(|&&x| x == user_data.email)
+                eprintln!("{}", e);
+
+                HttpResponse::InternalServerError().finish()
+            })?;
+    match user
+    {
+        Some(_) => Ok(Ok(greeting)),
+        None => Ok(Err(MyError::Unauthorized { message: "The user name or email are already in use.".to_string() }))
+    }
+    // Ok(greeting)
+
+    //     let user = web::block(move || actions::insert_new_user(&form.name, &conn))
+
+
+    // let bad_names = vec!["aaa", "bbb", "ccc"];
+    // let bad_emails = vec!["aaa@aaa.com", "bbb@bbb.com", "ccc@ccc.com"];
+    // // let greeting = format!("Welcome {}, {}!", user_data.user_name, user_data.email);
+    // let greeting = "Registration was successfully completed!".to_string();
+    //
+    // match bad_names.iter().find(|&&x| x == user_data.user_name)
+    // {
+    //     Some(_) => Err(MyError::Unauthorized { message: "The name is already in use.".to_string() } ),
+    //     None =>
+    //         {
+    //             match bad_emails.iter().find(|&&x| x == user_data.email)
+    //             {
+    //                 Some(_) => Err(MyError::Unauthorized { message: "The email is already in use.".to_string() }),
+    //                 None => Ok(greeting)
+    //             }
+    //         }
+    // }
+}
+
+
+
+
+fn insert_new_user(user_data: &web::Json<models::UserRegisterData>, conn: &PgConnection) -> Result<Option<models::User>, diesel::result::Error>
+{
+    use crate::schema::users::dsl::*;
+
+    match users
+        .filter(user_name.eq(user_data.user_name.to_string()))
+        .or_filter(email.eq(user_data.email.to_string()))
+        .first::<models::User>(conn)
+    {
+        Ok(_) => Ok(None),
+        Err(_) =>
+            {
+                let new_user = models::User
                 {
-                    Some(_) => Err(MyError::Unauthorized { message: "The email is already in use.".to_string() }),
-                    None => Ok(greeting)
+                    id: Uuid::new_v4().to_string(),
+                    user_name: user_data.user_name.to_owned(),
+                    email: user_data.email.to_owned(),
+                    password: user_data.password.to_owned()
+                };
+                match diesel::insert_into(users).values(&new_user).execute(conn)
+                {
+                    Ok(_) => Ok(Some(new_user)),
+                    Err(e) => Err(e)
                 }
             }
     }
+
+
+    //
+    // let new_user = models::User
+    // {
+    //     id: Uuid::new_v4().to_string(),
+    //     user_name: user_data.user_name.to_owned(),
+    //     email: user_data.email.to_owned(),
+    //     password: user_data.password.to_owned()
+    // };
+    // diesel::insert_into(users).values(&new_user).execute(conn)?;
+    // Ok(new_user)
 }
 
-async fn sign_in_user(user_data: web::Json<UserSignInDataRequest>) -> Result<HttpResponse>
+
+async fn sign_in_user(user_data: web::Json<models::UserSignInDataRequest>) -> Result<HttpResponse, MyError>
 {
     let good_names = vec!["ddd", "eee", "fff"];
     let good_passwords = vec!["ddd_pass", "eee_pass", "fff_pass"];
@@ -85,54 +146,73 @@ async fn sign_in_user(user_data: web::Json<UserSignInDataRequest>) -> Result<Htt
 
     match names_with_passwords.get(&user_data.user_name[..])
     {
-        Some(pass) => Ok(HttpResponse::Ok().json(UserSignInDataResponse {
-                                user_name: user_data.user_name.to_string(), access_type: "XXX-XXX-XXX".to_string(), access_token: "YYY-YYY-YYY".to_string()
-                            })),
-        None => Ok(HttpResponse::Ok().json(UserSignInDataResponse {
-                user_name: "ERR".to_string(), access_type: "ERR".to_string(), access_token: "ERR".to_string()
-    }))
-
+        Some(password) => if password.to_string() == user_data.password
+            {
+                Ok(HttpResponse::Ok().json(models::UserSignInDataResponse
+                    {
+                        user_name: user_data.user_name.to_string(),
+                        access_type: "XXX-XXX-XXX".to_string(),
+                        access_token: "YYY-YYY-YYY".to_string()
+                    }))
+            }
+            else
+            {
+                Err(MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } )
+            },
+        None => Err(MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } )
     }
-
 }
-
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()>
 {
-    let mut listenfd = ListenFd::from_env();
-    let mut server = HttpServer::new(||
+    std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+    dotenv::dotenv().ok();
+
+    let conn_spec = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let manager = ConnectionManager::<PgConnection>::new(conn_spec);
+
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+
+    let bind = "0.0.0.0:8080";
+    println!("Starting server at: {}", &bind);
+
+    // Start HTTP server
+    HttpServer::new(move ||
         {
             App::new()
+                // set up DB pool to be used with web::Data<Pool> extractor
+                .data(pool.clone())
+                .wrap(middleware::Logger::default())
+
                 .service(
                     web::scope("/auth")
                         .service(
                         web::resource("/register_user")
                             // change json extractor configuration
-                            .app_data(web::Json::<UserRegisterData>::configure(
-                                |cfg|
+                            .app_data(web::JsonConfig::default().limit(1024)
+                                .error_handler(|err, _req|
                                     {
-                                        cfg.limit(1024).error_handler(|err, _req|
-                                            {
-                                                // create custom error response
-                                                error::InternalError::from_response(
-                                                    err,HttpResponse::Conflict().finish(), ).into()
-                                            }
-                                        )
+                                        // create custom error response
+                                        error::InternalError::from_response(
+                                            err,HttpResponse::Conflict().body("Incorrect data."), ).into()
                                     }
                                 )
                             )
                             .route(web::post().to(register_user)), )
                         .service(web::resource("/sign_in_user")
                             // change json extractor configuration
-                            .app_data(web::Json::<UserSignInDataRequest>::configure(
+                            .app_data(web::Json::<models::UserSignInDataRequest>::configure(
                                 |cfg|
                                     {
                                         cfg.limit(1024).error_handler(|err, _req|
                                             {
                                                 // create custom error response
                                                 error::InternalError::from_response(
-                                                    err, HttpResponse::Conflict().finish(), ).into()
+                                                    err,HttpResponse::Conflict().body("Incorrect data."), ).into()
                                             }
                                         )
                                     }
@@ -144,16 +224,9 @@ async fn main() -> std::io::Result<()>
                 .route("/greeting", web::get().to(greeting))
                 .route("/greeting/greeting_2", web::get().to(greeting))
                 .service(Files::new("", "./web_layout").index_file("index.html"))
-        });
-
-    server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap()
-    {
-        server.listen(l)?
-    }
-    else
-    {
-        // server.bind("127.0.0.1:8080")?
-        server.bind("0.0.0.0:8080")?
-    };
-    server.run().await
+                // .service(greeting)
+        })
+    .bind(&bind)?
+    .run()
+    .await
 }

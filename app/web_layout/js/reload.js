@@ -142,6 +142,7 @@ function sign_in_form_uploading() {
 
     reloading_data.innerHTML = "";
 
+    identify_user();
     add_greeting_header();
 
     const sign_in_header =  document.createElement("h3");
@@ -197,8 +198,16 @@ function sign_in_user(user_data) {
                 return response.text()
                     .then(function (text) {
 
+                        localStorage.setItem("authorization", JSON.parse(text)["user_name"])
+
                         reloading_data.innerHTML = "";
-                        reloading_data.innerHTML = text;
+
+                        identify_user();
+                        add_greeting_header();
+
+                        // reloading_data.innerHTML = text;
+
+
                         // const registration_successfull_header = `<h3>${text}</h3>`;
                         // reloading_data.innerHTML = registration_successfull_header;
                         // const sign_in_button = document.createElement("button");
