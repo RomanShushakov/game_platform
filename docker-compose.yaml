@@ -1,0 +1,45 @@
+version: '3.7'
+
+networks:
+  app_net:
+    driver: bridge
+
+volumes:
+  postgres_db_volume:
+
+services:
+  postgres_db:
+    image: postgres:12.3
+    container_name: postgres_db
+    networks:
+      - app_net
+    restart: always
+    volumes:
+      - postgres_db_volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: actix_pg_pass_test
+      POSTGRES_USER: actix_pg_user_test 
+      POSTGRES_DB: actix_pg_db_test
+
+  adminer:
+    image: adminer:4.7.7
+    container_name: adminer
+    networks:
+      - app_net
+    restart: always
+    ports:
+      - 8081:8080
+    depends_on:
+      - postgres_db
+
+  app:
+    build: app
+    environment:
+      DATABASE_URL: postgresql://actix_pg_user_test:actix_pg_pass_test@postgres_db:5432/actix_pg_db_test
+    command: bash -c "diesel setup && diesel migration run && cargo run --release"
+    networks:
+      - app_net
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres_db

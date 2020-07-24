@@ -10,6 +10,10 @@ RUN cargo init
 
 COPY . /app/
 
+RUN apt install libpq-dev
+
+RUN cargo install diesel_cli --no-default-features --features postgres
+
 EXPOSE 8080
 
-CMD ["cargo", "run", "--release"]
+# CMD ["cargo", "run", "--release"]

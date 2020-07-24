@@ -22,146 +22,60 @@ mod database;
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-async fn greeting() -> impl Responder
-{
-    HttpResponse::Ok().body("Hello actix---web again!")
-}
+// async fn greeting() -> impl Responder
+// {
+//     HttpResponse::Ok().body("Hello actix---web again!")
+// }
 
 
-#[derive(Fail, Debug)]
-enum MyError {
-    #[fail(display = "{}", message)]
-    Unauthorized { message: String },
-}
-
-
-impl error::ResponseError for MyError {
-    fn error_response(&self) -> HttpResponse {
-        ResponseBuilder::new(self.status_code())
-            .set_header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-            .body(self.to_string())
-    }
-
-    fn status_code(&self) -> StatusCode {
-        match *self {
-            MyError::Unauthorized {..} => StatusCode::UNAUTHORIZED,
-        }
-    }
-}
-
-
-async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>) -> Result<Result<String, MyError> , Error>
+async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>) -> Result<Result<String, database::MyError> , Error>
 {
     let greeting = "Registration was successfully completed!".to_string();
 
     let conn = pool.get().expect("couldn't get db connection from pool");
 
-    let user = web::block(move || insert_new_user(&user_data, &conn))
+    let user = web::block(move || database::insert_new_user(&user_data, &conn))
         .await
         .map_err(|e|
             {
                 eprintln!("{}", e);
-
                 HttpResponse::InternalServerError().finish()
             })?;
     match user
     {
-        Some(_) => Ok(Ok(greeting)),
-        None => Ok(Err(MyError::Unauthorized { message: "The user name or email are already in use.".to_string() }))
+        Ok(_)=> Ok(Ok(greeting)),
+        Err(err) => Ok(Err(err))
     }
-    // Ok(greeting)
-
-    //     let user = web::block(move || actions::insert_new_user(&form.name, &conn))
-
-
-    // let bad_names = vec!["aaa", "bbb", "ccc"];
-    // let bad_emails = vec!["aaa@aaa.com", "bbb@bbb.com", "ccc@ccc.com"];
-    // // let greeting = format!("Welcome {}, {}!", user_data.user_name, user_data.email);
-    // let greeting = "Registration was successfully completed!".to_string();
-    //
-    // match bad_names.iter().find(|&&x| x == user_data.user_name)
-    // {
-    //     Some(_) => Err(MyError::Unauthorized { message: "The name is already in use.".to_string() } ),
-    //     None =>
-    //         {
-    //             match bad_emails.iter().find(|&&x| x == user_data.email)
-    //             {
-    //                 Some(_) => Err(MyError::Unauthorized { message: "The email is already in use.".to_string() }),
-    //                 None => Ok(greeting)
-    //             }
-    //         }
-    // }
 }
 
 
-
-
-fn insert_new_user(user_data: &web::Json<models::UserRegisterData>, conn: &PgConnection) -> Result<Option<models::User>, diesel::result::Error>
+async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserSignInDataRequest>) -> Result<Result<HttpResponse, database::MyError>, Error>
 {
-    use crate::schema::users::dsl::*;
+    let conn = pool.get().expect("couldn't get db connection from pool");
 
-    match users
-        .filter(user_name.eq(user_data.user_name.to_string()))
-        .or_filter(email.eq(user_data.email.to_string()))
-        .first::<models::User>(conn)
-    {
-        Ok(_) => Ok(None),
-        Err(_) =>
+    let user = web::block(move || database::find_user_by_name_and_password(&user_data, &conn))
+        .await
+        .map_err(|e|
             {
-                let new_user = models::User
-                {
-                    id: Uuid::new_v4().to_string(),
-                    user_name: user_data.user_name.to_owned(),
-                    email: user_data.email.to_owned(),
-                    password: user_data.password.to_owned()
-                };
-                match diesel::insert_into(users).values(&new_user).execute(conn)
-                {
-                    Ok(_) => Ok(Some(new_user)),
-                    Err(e) => Err(e)
-                }
-            }
-    }
+                eprintln!("{}", e);
+                HttpResponse::InternalServerError().finish()
+            })?;
 
-
-    //
-    // let new_user = models::User
-    // {
-    //     id: Uuid::new_v4().to_string(),
-    //     user_name: user_data.user_name.to_owned(),
-    //     email: user_data.email.to_owned(),
-    //     password: user_data.password.to_owned()
-    // };
-    // diesel::insert_into(users).values(&new_user).execute(conn)?;
-    // Ok(new_user)
+    if let Some(user) = user
+        {
+            Ok(Ok(HttpResponse::Ok().json(models::UserSignInDataResponse
+                {
+                    user_name: user.user_name.to_string(),
+                    access_type: "XXX-XXX-XXX".to_string(),
+                    access_token: "YYY-YYY-YYY".to_string()
+                })))
+        }
+        else
+        {
+            Ok(Err(database::MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } ))
+        }
 }
 
-
-async fn sign_in_user(user_data: web::Json<models::UserSignInDataRequest>) -> Result<HttpResponse, MyError>
-{
-    let good_names = vec!["ddd", "eee", "fff"];
-    let good_passwords = vec!["ddd_pass", "eee_pass", "fff_pass"];
-    let mut names_with_passwords: HashMap<_, _> =
-        good_names.into_iter().zip(good_passwords.into_iter()).collect();
-
-    match names_with_passwords.get(&user_data.user_name[..])
-    {
-        Some(password) => if password.to_string() == user_data.password
-            {
-                Ok(HttpResponse::Ok().json(models::UserSignInDataResponse
-                    {
-                        user_name: user_data.user_name.to_string(),
-                        access_type: "XXX-XXX-XXX".to_string(),
-                        access_token: "YYY-YYY-YYY".to_string()
-                    }))
-            }
-            else
-            {
-                Err(MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } )
-            },
-        None => Err(MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } )
-    }
-}
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()>
@@ -221,8 +135,8 @@ async fn main() -> std::io::Result<()>
                             // .route(web::post().to(register_user)),)
                             .route(web::post().to(sign_in_user)), ))
 
-                .route("/greeting", web::get().to(greeting))
-                .route("/greeting/greeting_2", web::get().to(greeting))
+                // .route("/greeting", web::get().to(greeting))
+                // .route("/greeting/greeting_2", web::get().to(greeting))
                 .service(Files::new("", "./web_layout").index_file("index.html"))
                 // .service(greeting)
         })
