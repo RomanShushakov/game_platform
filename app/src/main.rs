@@ -15,6 +15,9 @@ use diesel::r2d2::{self, ConnectionManager};
 use uuid::Uuid;
 use diesel::expression::exists::exists;
 
+use chrono::{DateTime, Duration, Utc};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+
 mod models;
 mod schema;
 mod database;
@@ -49,7 +52,8 @@ async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::Use
 }
 
 
-async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserSignInDataRequest>) -> Result<Result<HttpResponse, database::MyError>, Error>
+async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserSignInDataRequest>)
+    -> Result<Result<HttpResponse, database::MyError>, Error>
 {
     let conn = pool.get().expect("couldn't get db connection from pool");
 
@@ -63,17 +67,66 @@ async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::User
 
     if let Some(user) = user
         {
+            dotenv::dotenv().ok();
+            let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
+            let key = secret_key.as_bytes();
+
+            let expiration_date = Utc::now() + Duration::minutes(1);
+            let claims = models::Claims
+                { user_name: user.user_name.to_string(), email: user.email.to_string(), exp: expiration_date.timestamp() as usize };
+            let token = encode(&Header::default(), &claims,&EncodingKey::from_secret(key)).unwrap();
+
             Ok(Ok(HttpResponse::Ok().json(models::UserSignInDataResponse
                 {
                     user_name: user.user_name.to_string(),
-                    access_type: "XXX-XXX-XXX".to_string(),
-                    access_token: "YYY-YYY-YYY".to_string()
+                    // access_type: "XXX-XXX-XXX".to_string(),
+                    access_token: token.to_string()
                 })))
         }
         else
         {
             Ok(Err(database::MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } ))
         }
+}
+
+
+async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, database::MyError>
+{
+    let conn = pool.get().expect("couldn't get db connection from pool");
+
+    dotenv::dotenv().ok();
+    let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
+    let key = secret_key.as_bytes();
+
+    if let Some(received_token) = request.headers().get("authorization")
+    {
+        if let Ok(user_data) = decode::<models::Claims>(
+            received_token.to_str().unwrap(), &DecodingKey::from_secret(key),
+            &Validation::new(Algorithm::HS256),)
+        {
+            let verification = database::verify_user_by_name_and_email(&user_data, &conn);
+            match verification
+            {
+                Ok(true) =>
+                    {
+                        Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse
+                        {
+                            user_name: user_data.claims.user_name,
+                            email: user_data.claims.email
+                        }))
+                    },
+                _ => Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )
+            }
+        }
+        else
+        {
+            Err(database::MyError::Unauthorized { message: "Session has expired, please login again.".to_string() } )
+        }
+    }
+    else
+    {
+        Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )
+    }
 }
 
 
@@ -132,11 +185,9 @@ async fn main() -> std::io::Result<()>
                                     }
                                 )
                             )
-                            // .route(web::post().to(register_user)),)
-                            .route(web::post().to(sign_in_user)), ))
+                            .route(web::post().to(sign_in_user)), )
+                        .route("/identify_user", web::get().to(identify_user)))
 
-                // .route("/greeting", web::get().to(greeting))
-                // .route("/greeting/greeting_2", web::get().to(greeting))
                 .service(Files::new("", "./web_layout").index_file("index.html"))
                 // .service(greeting)
         })

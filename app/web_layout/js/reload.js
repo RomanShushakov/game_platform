@@ -7,10 +7,43 @@ function identify_user() {
     const token = localStorage.getItem("authorization");
     if (!token) {
         sessionStorage.setItem("user_name", "Guest");
+        add_greeting_header();
     }
     else
     {
-        sessionStorage.setItem("user_name", localStorage.getItem("authorization"));
+        const url = "/auth/identify_user";
+
+        const my_settings = {
+            method: "GET",
+            headers: {"authorization": token}
+        };
+
+        fetch(url, my_settings)
+            .then(function (response) {
+                if (response.ok) {
+                    return response.text()
+                        .then(function (text) {
+                            sessionStorage.setItem("user_name", JSON.parse(text)["user_name"]);
+                            add_greeting_header();
+                        })
+                }
+                else {
+                    return response.text()
+                        .then(function (text) {
+                            console.log(text);
+                            if (text == "Session has expired, please login again.") {
+                                sessionStorage.setItem("user_name", "Guest");
+                                add_greeting_header();
+                            }
+                            else {
+                                sessionStorage.setItem("user_name", text);
+                                add_greeting_header();
+                            }
+                        })
+                }
+            });
+
+        
     }
 }
 
@@ -91,8 +124,8 @@ register_button.addEventListener("click", function () {
 function register_user(user_data) {
     const url = "/auth/register_user";
     const my_settings = {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json',},
+        method: "POST",
+        headers: {"Content-Type": "application/json",},
         body: JSON.stringify(user_data)
     };
     fetch(url, my_settings)
@@ -143,7 +176,8 @@ function sign_in_form_uploading() {
     reloading_data.innerHTML = "";
 
     identify_user();
-    add_greeting_header();
+
+    // add_greeting_header();
 
     const sign_in_header =  document.createElement("h3");
     sign_in_header.textContent = "Sign in";
@@ -188,8 +222,8 @@ function sign_in_form_uploading() {
 function sign_in_user(user_data) {
     const url = "/auth/sign_in_user";
     const my_settings = {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json',},
+        method: "POST",
+        headers: {"Content-Type": "application/json",},
         body: JSON.stringify(user_data)
     };
     fetch(url, my_settings)
@@ -198,12 +232,13 @@ function sign_in_user(user_data) {
                 return response.text()
                     .then(function (text) {
 
-                        localStorage.setItem("authorization", JSON.parse(text)["user_name"])
+                        localStorage.setItem("authorization", JSON.parse(text)["access_token"]);
 
                         reloading_data.innerHTML = "";
 
                         identify_user();
-                        add_greeting_header();
+
+                        // add_greeting_header();
 
                         // reloading_data.innerHTML = text;
 

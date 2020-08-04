@@ -5,6 +5,10 @@ use actix_http::ResponseBuilder;
 use actix_web::{http::header, http::StatusCode};
 use failure::Fail;
 
+use crypto::sha2::Sha256;
+use crypto::digest::Digest;
+use jsonwebtoken::TokenData;
+
 use crate::models;
 
 
@@ -13,6 +17,7 @@ pub enum MyError {
     #[fail(display = "{}", message)]
     Unauthorized { message: String },
 }
+
 
 impl error::ResponseError for MyError {
     fn error_response(&self) -> HttpResponse {
@@ -28,11 +33,33 @@ impl error::ResponseError for MyError {
     }
 }
 
-pub fn insert_new_user(user_data: &web::Json<models::UserRegisterData>, conn: &PgConnection) -> Result<Result<models::User, MyError>, diesel::result::Error>
-{
-    use crate::schema::users::dsl::*;
 
-    match users
+fn modify_password(password: &str) -> String
+{
+    let mut updated_password = String::new();
+    for (i, char) in password.chars().rev().enumerate()
+    {
+        if i % 2 == 0
+        {
+            updated_password += &char.to_uppercase().to_string();
+        }
+        else
+        {
+            updated_password += &char.to_string();
+        }
+    }
+    let mut modified_password = Sha256::new();
+    modified_password.input_str(updated_password.as_str());
+    modified_password.result_str()
+}
+
+
+pub fn insert_new_user(user_data: &web::Json<models::UserRegisterData>, conn: &PgConnection)
+    -> Result<Result<models::User, MyError>, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    match users_data
         .filter(user_name.eq(user_data.user_name.to_string()))
         .or_filter(email.eq(user_data.email.to_string()))
         .first::<models::User>(conn)
@@ -52,9 +79,11 @@ pub fn insert_new_user(user_data: &web::Json<models::UserRegisterData>, conn: &P
                     id: Uuid::new_v4().to_string(),
                     user_name: user_data.user_name.to_owned(),
                     email: user_data.email.to_owned(),
-                    password: user_data.password.to_owned()
+                    password: modify_password(&user_data.password),
+                    is_superuser: false,
+                    is_active: true
                 };
-                match diesel::insert_into(users).values(&new_user).execute(conn)
+                match diesel::insert_into(users_data).values(&new_user).execute(conn)
                 {
                     Ok(_) => Ok(Ok(new_user)),
                     Err(e) => Err(e)
@@ -63,14 +92,31 @@ pub fn insert_new_user(user_data: &web::Json<models::UserRegisterData>, conn: &P
     }
 }
 
-pub fn find_user_by_name_and_password(user_data: &web::Json<models::UserSignInDataRequest>, conn: &PgConnection) -> Result<Option<models::User>, diesel::result::Error>
-{
-    use crate::schema::users::dsl::*;
 
-    let existed_user = users
+pub fn find_user_by_name_and_password(user_data: &web::Json<models::UserSignInDataRequest>, conn: &PgConnection)
+    -> Result<Option<models::User>, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    let existed_user = users_data
         .filter(user_name.eq(user_data.user_name.to_string()))
-        .filter(password.eq(user_data.password.to_string()))
+        .filter(password.eq(modify_password(&user_data.password)))
         .first::<models::User>(conn)
         .optional()?;
     Ok(existed_user)
+}
+
+
+pub fn verify_user_by_name_and_email(user_data: &TokenData<models::Claims>, conn: &PgConnection)
+    -> Result<bool, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    match users_data
+        .filter(user_name.eq(user_data.claims.user_name.to_string()))
+        .first::<models::User>(conn)
+    {
+        Ok(existed_user) => Ok(existed_user.email == user_data.claims.email.to_string()),
+        Err(e) => Err(e)
+    }
 }
