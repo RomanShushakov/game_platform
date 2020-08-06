@@ -109,18 +109,17 @@ pub fn find_user_by_name_and_password(user_data: &web::Json<models::UserSignInDa
 
 
 pub fn verify_user_by_name_and_email(user_data: &TokenData<models::Claims>, conn: &PgConnection)
-    -> Result<bool, diesel::result::Error>
+    -> Result<Option<models::User>, diesel::result::Error>
 {
     use crate::schema::users_data::dsl::*;
 
-    match users_data
+    let verified_user =  users_data
         .filter(user_name.eq(user_data.claims.user_name.to_string()))
+        .filter(email.eq(user_data.claims.email.to_string()))
         .filter(is_active.eq(true))
         .first::<models::User>(conn)
-    {
-        Ok(existed_user) => Ok(existed_user.email == user_data.claims.email.to_string()),
-        Err(e) => Err(e)
-    }
+        .optional()?;
+    Ok(verified_user)
 }
 
 

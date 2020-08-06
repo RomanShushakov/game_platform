@@ -78,11 +78,13 @@ function add_greeting(user_name) {
 const sign_in_sign_out_button = document.getElementById("sign_in_sign_out_button");
 sign_in_sign_out_button.addEventListener("click", function () {
     if (!is_logged_in) {
+        console.log("user_info_logged_in");
         window.location = "../";
     }
     else {
         localStorage.removeItem("authorization");
         is_logged_in = false;
+        console.log("user_info");
         window.location = "../";
     }
 });

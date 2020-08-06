@@ -23,9 +23,18 @@ use askama::Template;
 mod models;
 mod schema;
 mod database;
+mod templates;
 
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
+
+#[derive(Template)]
+#[template(path = "all_users.html")]
+struct AllUsers
+{
+    users: Vec<models::User>
+}
 
 async fn greeting(pool: web::Data<DbPool>) -> Result<HttpResponse, Error>
 {
@@ -41,22 +50,30 @@ async fn greeting(pool: web::Data<DbPool>) -> Result<HttpResponse, Error>
 
     if let Some(users) = all_users
     {
-        for user in users
-        {
-            println!("{:?}", user.email);
+        // for user in users
+        // {
+        //     println!("{:?}", user.email);
+        //
+        // }
+        let all_users = AllUsers { users }.render().unwrap();
+        Ok(HttpResponse::Ok().content_type("text/html").body(all_users))
 
-        }
-        Ok(HttpResponse::Ok().body(users))
     }
+    else
+    {
+        Ok(HttpResponse::Ok().body("Hello actix---web again!"))
+    }
+
 
     // println!("{:?}", all_users);
 
-    Ok(HttpResponse::Ok().body("Hello actix---web again!"))
+
 
 }
 
 
-async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>) -> Result<Result<String, database::MyError> , Error>
+async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>)
+    -> Result<Result<String, database::MyError> , Error>
 {
     let greeting = "Registration was successfully completed!".to_string();
 
@@ -114,7 +131,8 @@ async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::User
 }
 
 
-async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, database::MyError>
+async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest)
+    -> Result<Result<HttpResponse, database::MyError>, Error>
 {
     let conn = pool.get().expect("couldn't get db connection from pool");
 
@@ -128,61 +146,82 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest) -> Result<
             received_token.to_str().unwrap(), &DecodingKey::from_secret(key),
             &Validation::new(Algorithm::HS256),)
         {
-            let verification = database::verify_user_by_name_and_email(&user_data, &conn);
-            match verification
+            let verified_user = web::block(move || database::verify_user_by_name_and_email(&user_data, &conn))
+            .await
+            .map_err(|e|
+                {
+                    eprintln!("{}", e);
+                    HttpResponse::InternalServerError().finish()
+                })?;
+
+            if let Some(user) = verified_user
             {
-                Ok(true) =>
+                Ok(Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse
                     {
-                        Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse
-                        {
-                            user_name: user_data.claims.user_name,
-                        }))
-                    },
-                _ => Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )
+                        user_name: user.user_name,
+                    })))
+            }
+            else
+            {
+                Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } ))
             }
         }
         else
         {
-            Err(database::MyError::Unauthorized { message: "Session has expired, please login again.".to_string() } )
+            Ok(Err(database::MyError::Unauthorized { message: "Session has expired, please login again.".to_string() } ))
         }
     }
     else
     {
-        Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )
+        Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } ))
     }
 }
 
 
-#[derive(Template)]
-#[template(path = "user.html")]
-struct UserTemplate<'a> {
-    name: &'a str,
-    text: &'a str,
-}
-
-
-#[derive(Template)]
-#[template(path = "user_info.html")]
-struct UserInfo;
-
-
-async fn user_info(query: web::Query<HashMap<String, String>>) -> Result<HttpResponse>
+async fn show_user_info(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, Error>
 {
-    let s = if let Some(name) = query.get("name")
+    let conn = pool.get().expect("couldn't get db connection from pool");
+
+    dotenv::dotenv().ok();
+    let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
+    let key = secret_key.as_bytes();
+
+    if let Some(received_token) = request.headers().get("authorization")
     {
-        UserTemplate
+        if let Ok(user_data) = decode::<models::Claims>(
+            received_token.to_str().unwrap(), &DecodingKey::from_secret(key),
+            &Validation::new(Algorithm::HS256),)
         {
-            name,
-            text: "Welcome!",
+            let verified_user = web::block(move || database::verify_user_by_name_and_email(&user_data, &conn))
+            .await
+            .map_err(|e|
+                {
+                    eprintln!("{}", e);
+                    HttpResponse::InternalServerError().finish()
+                })?;
+
+            if let Some(user) = verified_user
+            {
+                let user_info = templates::AuthorizedUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
+                Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+            }
+            else
+            {
+                let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
+                Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+            }
         }
-        .render()
-        .unwrap()
+        else
+        {
+            let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
+            Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+        }
     }
     else
     {
-        UserInfo.render().unwrap()
-    };
-    Ok(HttpResponse::Ok().content_type("text/html").body(s))
+        let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
+        Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+    }
 }
 
 
@@ -244,7 +283,7 @@ async fn main() -> std::io::Result<()>
                             .route(web::post().to(sign_in_user)), )
                         .route("/identify_user", web::get().to(identify_user))
 
-                        .route("/user_info", web::get().to(user_info)))
+                        .route("/user_info", web::get().to(show_user_info)))
 
                 .route("/greeting", web::get().to(greeting))
 
