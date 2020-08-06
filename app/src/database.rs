@@ -101,6 +101,7 @@ pub fn find_user_by_name_and_password(user_data: &web::Json<models::UserSignInDa
     let existed_user = users_data
         .filter(user_name.eq(user_data.user_name.to_string()))
         .filter(password.eq(modify_password(&user_data.password)))
+        .filter(is_active.eq(true))
         .first::<models::User>(conn)
         .optional()?;
     Ok(existed_user)
@@ -114,9 +115,27 @@ pub fn verify_user_by_name_and_email(user_data: &TokenData<models::Claims>, conn
 
     match users_data
         .filter(user_name.eq(user_data.claims.user_name.to_string()))
+        .filter(is_active.eq(true))
         .first::<models::User>(conn)
     {
         Ok(existed_user) => Ok(existed_user.email == user_data.claims.email.to_string()),
         Err(e) => Err(e)
     }
+}
+
+
+pub fn find_all_users(conn: &PgConnection)
+    -> Result<Option<Vec<models::User>>, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    let all_users = users_data.load::<models::User>(conn).optional()?;
+
+    // let existed_user = users_data
+    //     .filter(user_name.eq(user_data.user_name.to_string()))
+    //     .filter(password.eq(modify_password(&user_data.password)))
+    //     .filter(is_active.eq(true))
+    //     .first::<models::User>(conn)
+    //     .optional()?;
+    Ok(all_users)
 }

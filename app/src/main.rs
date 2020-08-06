@@ -18,6 +18,8 @@ use diesel::expression::exists::exists;
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
+use askama::Template;
+
 mod models;
 mod schema;
 mod database;
@@ -25,10 +27,33 @@ mod database;
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-// async fn greeting() -> impl Responder
-// {
-//     HttpResponse::Ok().body("Hello actix---web again!")
-// }
+async fn greeting(pool: web::Data<DbPool>) -> Result<HttpResponse, Error>
+{
+    let conn = pool.get().expect("couldn't get db connection from pool");
+
+    let all_users = web::block(move || database::find_all_users(&conn))
+    .await
+    .map_err(|e|
+        {
+            eprintln!("{}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+
+    if let Some(users) = all_users
+    {
+        for user in users
+        {
+            println!("{:?}", user.email);
+
+        }
+        Ok(HttpResponse::Ok().body(users))
+    }
+
+    // println!("{:?}", all_users);
+
+    Ok(HttpResponse::Ok().body("Hello actix---web again!"))
+
+}
 
 
 async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>) -> Result<Result<String, database::MyError> , Error>
@@ -66,27 +91,26 @@ async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::User
             })?;
 
     if let Some(user) = user
-        {
-            dotenv::dotenv().ok();
-            let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
-            let key = secret_key.as_bytes();
+    {
+        dotenv::dotenv().ok();
+        let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
+        let key = secret_key.as_bytes();
 
-            let expiration_date = Utc::now() + Duration::minutes(1);
-            let claims = models::Claims
-                { user_name: user.user_name.to_string(), email: user.email.to_string(), exp: expiration_date.timestamp() as usize };
-            let token = encode(&Header::default(), &claims,&EncodingKey::from_secret(key)).unwrap();
+        let expiration_date = Utc::now() + Duration::minutes(1);
+        let claims = models::Claims
+            { user_name: user.user_name.to_string(), email: user.email.to_string(), exp: expiration_date.timestamp() as usize };
+        let token = encode(&Header::default(), &claims,&EncodingKey::from_secret(key)).unwrap();
 
-            Ok(Ok(HttpResponse::Ok().json(models::UserSignInDataResponse
-                {
-                    user_name: user.user_name.to_string(),
-                    // access_type: "XXX-XXX-XXX".to_string(),
-                    access_token: token.to_string()
-                })))
-        }
-        else
-        {
-            Ok(Err(database::MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } ))
-        }
+        Ok(Ok(HttpResponse::Ok().json(models::UserSignInDataResponse
+            {
+                // access_type: "XXX-XXX-XXX".to_string(),
+                access_token: token.to_string()
+            })))
+    }
+    else
+    {
+        Ok(Err(database::MyError::Unauthorized { message: "Incorrect user name or password.".to_string() } ))
+    }
 }
 
 
@@ -112,7 +136,6 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest) -> Result<
                         Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse
                         {
                             user_name: user_data.claims.user_name,
-                            email: user_data.claims.email
                         }))
                     },
                 _ => Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )
@@ -127,6 +150,39 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest) -> Result<
     {
         Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )
     }
+}
+
+
+#[derive(Template)]
+#[template(path = "user.html")]
+struct UserTemplate<'a> {
+    name: &'a str,
+    text: &'a str,
+}
+
+
+#[derive(Template)]
+#[template(path = "user_info.html")]
+struct UserInfo;
+
+
+async fn user_info(query: web::Query<HashMap<String, String>>) -> Result<HttpResponse>
+{
+    let s = if let Some(name) = query.get("name")
+    {
+        UserTemplate
+        {
+            name,
+            text: "Welcome!",
+        }
+        .render()
+        .unwrap()
+    }
+    else
+    {
+        UserInfo.render().unwrap()
+    };
+    Ok(HttpResponse::Ok().content_type("text/html").body(s))
 }
 
 
@@ -186,10 +242,14 @@ async fn main() -> std::io::Result<()>
                                 )
                             )
                             .route(web::post().to(sign_in_user)), )
-                        .route("/identify_user", web::get().to(identify_user)))
+                        .route("/identify_user", web::get().to(identify_user))
+
+                        .route("/user_info", web::get().to(user_info)))
+
+                .route("/greeting", web::get().to(greeting))
+
 
                 .service(Files::new("", "./web_layout").index_file("index.html"))
-                // .service(greeting)
         })
     .bind(&bind)?
     .run()

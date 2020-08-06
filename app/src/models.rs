@@ -36,7 +36,6 @@ pub struct UserSignInDataRequest
 #[derive(Serialize)]
 pub struct UserSignInDataResponse
 {
-    pub user_name: String,
     // pub access_type: String,
     pub access_token: String
 }
@@ -55,5 +54,4 @@ pub struct Claims
 pub struct AuthorizedUserResponse
 {
     pub user_name: String,
-    pub email: String
 }

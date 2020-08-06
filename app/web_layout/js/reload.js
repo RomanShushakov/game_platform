@@ -1,13 +1,14 @@
 "use strict";
 
 const reloading_data = document.getElementById("reloading_data");
+let is_logged_in = false;
 
 // *** identification start
-function identify_user() {
+async function identify_user() {
     const token = localStorage.getItem("authorization");
+    is_logged_in = false;
     if (!token) {
-        sessionStorage.setItem("user_name", "Guest");
-        add_greeting_header();
+        return {"user_name": "Guest"};
     }
     else
     {
@@ -18,52 +19,60 @@ function identify_user() {
             headers: {"authorization": token}
         };
 
-        fetch(url, my_settings)
-            .then(function (response) {
+        const user_data = await fetch(url, my_settings)
+            .then(response => {
                 if (response.ok) {
                     return response.text()
-                        .then(function (text) {
-                            sessionStorage.setItem("user_name", JSON.parse(text)["user_name"]);
-                            add_greeting_header();
-                        })
+                    .then(text => {
+                        is_logged_in = true;
+                        console.log(is_logged_in);
+                        console.log(JSON.parse(text));
+                        return JSON.parse(text);
+                    })
                 }
                 else {
                     return response.text()
-                        .then(function (text) {
-                            console.log(text);
-                            if (text == "Session has expired, please login again.") {
-                                sessionStorage.setItem("user_name", "Guest");
-                                add_greeting_header();
-                            }
-                            else {
-                                sessionStorage.setItem("user_name", text);
-                                add_greeting_header();
-                            }
-                        })
+                    .then(text => {
+                        is_logged_in = false;
+                        console.log(is_logged_in);
+                        console.log(text);
+                        return {"user_name": "Guest", "error_msg": text};
+                    })
                 }
             });
-
-        
+        return user_data; 
     }
 }
 
+
 window.onload = function () {
-    identify_user();
-    add_startup_greeting_header();
+    identify_user()
+    .then(user_data => {
+        add_startup_greeting(user_data["user_name"]); 
+        if (is_logged_in) {
+            const sign_out_button = document.getElementById("sign_in_sign_out_button");
+            sign_out_button.innerHTML = "Sign out";
+            document.getElementById("register_button").remove();
+        }
+        const user_info_button = document.getElementById("user_info_button");
+        user_info_button.innerHTML = user_data["user_name"];
+    });
+
+
 };
 
-function add_startup_greeting_header() {
-    const greeting_header = document.getElementById("greeting_header");
-    const current_user = sessionStorage.getItem("user_name");
-    greeting_header.innerHTML = `Hello ${current_user}!`;
+
+function add_startup_greeting(user_name) {
+    const greeting = document.getElementById("greeting");
+    greeting.innerHTML = `Hello ${user_name}!`;
 }
 
-function add_greeting_header() {
-    const current_user = sessionStorage.getItem("user_name");
-    const greeting_header = document.createElement("h3");
-    greeting_header.id = "greeting_header";
-    greeting_header.textContent = `Hello ${current_user}!`;
-    reloading_data.appendChild(greeting_header);
+
+function add_greeting(user_name) {
+    const greeting = document.createElement("h3");
+    greeting.id = "greeting";
+    greeting.textContent = `Hello ${user_name}!`;
+    reloading_data.appendChild(greeting);
 }
 // *** identification end
 
@@ -73,8 +82,6 @@ const register_button = document.getElementById("register_button");
 register_button.addEventListener("click", function () {
 
     reloading_data.innerHTML = "";
-
-    add_greeting_header();
 
     const registration_header =  document.createElement("h3");
     registration_header.textContent = "Register";
@@ -97,21 +104,27 @@ register_button.addEventListener("click", function () {
 
     const register_submit_button = document.createElement("button");
     register_submit_button.id = "register_submit_button";
-    register_submit_button.innerHTML = "submit";
+    // register_submit_button.classList.toggle("authentication_button");
+    register_submit_button.innerHTML = "Submit";
     reloading_data.appendChild(register_submit_button);
 
     const register_response_message = document.createElement("p");
     register_response_message.id = "register_response_message";
     reloading_data.appendChild(register_response_message);
 
-    register_submit_button.addEventListener("click", function () {
+    identify_user()
+    .then(user_data => {
+        add_greeting(user_data["user_name"]);
+        const user_info_button = document.getElementById("user_info_button");
+        user_info_button.innerHTML = user_data["user_name"];
+    });
 
+    register_submit_button.addEventListener("click", function () {
         const user_data = {
             "user_name": registration_user_name.value,
             "email": registration_email.value,
             "password": registration_password.value
-        };
-    
+        }; 
         if (!check_registration_data(user_data)) {
             return false;
         }
@@ -121,6 +134,7 @@ register_button.addEventListener("click", function () {
     });
 });
 
+
 function register_user(user_data) {
     const url = "/auth/register_user";
     const my_settings = {
@@ -129,19 +143,17 @@ function register_user(user_data) {
         body: JSON.stringify(user_data)
     };
     fetch(url, my_settings)
-        .then(function (response) {
+        .then(response => {
             if (response.ok) {
                 return response.text()
-                    .then(function (text) {
-
+                    .then(text => {
                         reloading_data.innerHTML = "";
                         const registration_successfull_header = `<h3>${text}</h3>`;
                         reloading_data.innerHTML = registration_successfull_header;
                         const sign_in_button = document.createElement("button");
                         sign_in_button.id = "sign_in_button";
-                        sign_in_button.innerHTML = "sign in";
+                        sign_in_button.innerHTML = "Sign in";
                         reloading_data.appendChild(sign_in_button);
-
                         sign_in_button.addEventListener("click", function () {
                             sign_in_form_uploading();
                         });
@@ -150,7 +162,7 @@ function register_user(user_data) {
             else {
                 // return response.json()
                 return response.text()
-                    .then(function (text) {
+                    .then(text => {
                         // throw Error(json["detail"]);
                         // console.log("Error");
                         register_response_message.textContent = text;
@@ -166,18 +178,22 @@ function register_user(user_data) {
 
 
 // *** sign in start
-const sign_in_button = document.getElementById("sign_in_button");
-sign_in_button.addEventListener("click", function () {
-    sign_in_form_uploading();
+const sign_in_sign_out_button = document.getElementById("sign_in_sign_out_button");
+sign_in_sign_out_button.addEventListener("click", function () {
+    if (!is_logged_in) {
+        sign_in_form_uploading();
+    }
+    else {
+        localStorage.removeItem("authorization");
+        is_logged_in = false;
+        window.location.reload();
+    }
 });
+
 
 function sign_in_form_uploading() {
 
     reloading_data.innerHTML = "";
-
-    identify_user();
-
-    // add_greeting_header();
 
     const sign_in_header =  document.createElement("h3");
     sign_in_header.textContent = "Sign in";
@@ -195,29 +211,34 @@ function sign_in_form_uploading() {
 
     const login_button = document.createElement("button");
     login_button.id = "login_button";
-    login_button.innerHTML = "login";
+    login_button.innerHTML = "Login";
     reloading_data.appendChild(login_button);
 
     const sign_in_response_message = document.createElement("p");
     sign_in_response_message.id = "sign_in_response_message";
     reloading_data.appendChild(sign_in_response_message);
 
-    login_button.addEventListener("click", function () {
+    identify_user()
+    .then(user_data => {
+        add_greeting(user_data["user_name"]);
+        const user_info_button = document.getElementById("user_info_button");
+        user_info_button.innerHTML = user_data["user_name"];
+     });
 
+    login_button.addEventListener("click", function() {
         const user_data = {
             "user_name": sign_in_user_name.value,
             "password": sign_in_password.value
         };
-
-        sign_in_user(user_data);
-        
-
-
-
-        // reloading_data.innerHTML = "";
-        // login_button.remove();
+        if (!check_sign_in_data(user_data)) {
+            return false;
+        }
+        else {
+            sign_in_user(user_data);
+        }
     });
 }
+
 
 function sign_in_user(user_data) {
     const url = "/auth/sign_in_user";
@@ -227,41 +248,28 @@ function sign_in_user(user_data) {
         body: JSON.stringify(user_data)
     };
     fetch(url, my_settings)
-        .then(function (response) {
+        .then(response => {
             if (response.ok) {
                 return response.text()
-                    .then(function (text) {
-
+                    .then(text => {
                         localStorage.setItem("authorization", JSON.parse(text)["access_token"]);
-
                         reloading_data.innerHTML = "";
-
-                        identify_user();
-
-                        // add_greeting_header();
-
-                        // reloading_data.innerHTML = text;
-
-
-                        // const registration_successfull_header = `<h3>${text}</h3>`;
-                        // reloading_data.innerHTML = registration_successfull_header;
-                        // const sign_in_button = document.createElement("button");
-                        // sign_in_button.id = "sign_in_button";
-                        // sign_in_button.innerHTML = "sign in";
-                        // reloading_data.appendChild(sign_in_button);
-
-                        // sign_in_button.addEventListener("click", function () {
-                        //     sign_in_form_uploading();
-                        // });
+                        identify_user()
+                        .then(user_data => { 
+                            const sign_out_button = document.getElementById("sign_in_sign_out_button");
+                            sign_out_button.innerHTML = "Sign out";
+                            document.getElementById("register_button").remove();
+                            add_greeting(user_data["user_name"]);
+                            const user_info_button = document.getElementById("user_info_button");
+                            user_info_button.innerHTML = user_data["user_name"];
+                        });
                     });
             }
             else {
-                // return response.json()
                 return response.text()
-                    .then(function (text) {
+                    .then(text => {
                         // throw Error(json["detail"]);
                         // console.log("Error");
-
                         sign_in_response_message.textContent = text;
                     });
             }
@@ -271,12 +279,10 @@ function sign_in_user(user_data) {
       response_text.textContent = err;
     }); */
 };
-
-
 // *** sign in end
 
 
-// *** check registration data
+// *** check registration data start
 function check_email(email) {
     const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(String(email).toLowerCase());
@@ -296,3 +302,31 @@ function check_registration_data(user_data) {
     }
     return true;
 }
+// *** check registration data end
+
+
+// *** check sign in data start
+function check_sign_in_data(user_data) {
+    let elem = null;
+    for (elem in user_data) {
+        if (user_data[elem] == null || user_data[elem] == "") {
+            alert("Please Fill All Required Field");
+            return false;
+        }
+    }
+    return true;
+}
+// *** check sign in data end
+
+
+// *** show user data start
+const user_info_button = document.getElementById("user_info_button");
+user_info_button.addEventListener("click", function() {
+    if (is_logged_in) {
+        console.log("some info");
+        window.location = "/auth/user_info";
+    }
+    else {
+        console.log("no info");
+    }
+});
