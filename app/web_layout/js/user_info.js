@@ -51,6 +51,36 @@ window.onload = function () {
         if (is_logged_in) {
             const sign_out_button = document.getElementById("sign_in_sign_out_button");
             sign_out_button.innerHTML = "Sign out";
+
+            const token = localStorage.getItem("authorization");  
+            const url = "/auth/user_info";
+            const my_settings = {
+                method: "GET",
+                headers: {"authorization": token}
+            };
+
+            fetch(url, my_settings)
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    else {
+                        return response.text();
+                    }
+                })
+                .then(result => {
+                    document.getElementById("user_info").innerHTML = result;
+                });
+                // .then(function() {
+                //     const current_user_name_edit_button = document.getElementById("current_user_name_edit_button");
+                //     const current_email_edit_button = document.getElementById("current_email_edit_button");
+
+                //     current_email_edit_button.addEventListener("click", function () {
+                //         const current_email = document.getElementById("current_email");
+                //         console.log(current_email.textContent);
+                //     });
+
+                // });
         }
         else {
             window.location = "../";
@@ -89,3 +119,188 @@ sign_in_sign_out_button.addEventListener("click", function () {
     }
 });
 // *** sign out end
+
+
+
+// *** user data editing start
+function edit_name(id) {
+    console.log(id);
+    const current_user_name_editing_container = document.getElementById("user_name_editing_container");
+    const current_user_name_editing_field = document.createElement("input");
+    current_user_name_editing_field.id = "current_user_name_editing_field";
+    current_user_name_editing_container.appendChild(current_user_name_editing_field);
+
+    const apply_changes_button = document.getElementById("apply_changes_button");
+
+    if (!apply_changes_button) {
+        create_apply_and_cancel_buttons();
+    }
+    document.getElementById("current_user_name_edit_button").disabled = true;
+}
+
+
+function edit_email(id) {
+    console.log(id);
+    const current_email_edit_container = document.getElementById("email_editing_container");
+    const current_email_editing_field = document.createElement("input");
+    current_email_editing_field.id = "current_email_editing_field";
+    current_email_edit_container.appendChild(current_email_editing_field);
+
+    const apply_changes_button = document.getElementById("apply_changes_button");
+    if (!apply_changes_button) {
+        create_apply_and_cancel_buttons();
+    }
+    document.getElementById("current_email_edit_button").disabled = true;
+}
+
+
+function change_password(id) {
+    console.log(id);
+    const current_password_change_container = document.getElementById("password_change_container");
+    const new_password_field = document.createElement("input");
+    new_password_field.id = "new_password_field";
+    new_password_field.placeholder = "input new password";
+
+    const retype_new_password_field = document.createElement("input");
+    retype_new_password_field.id = "retype_new_password_field";
+    retype_new_password_field.placeholder = "retype new password";
+
+    current_password_change_container.appendChild(new_password_field);
+    current_password_change_container.appendChild(retype_new_password_field);
+
+    const apply_changes_button = document.getElementById("apply_changes_button");
+    if (!apply_changes_button) {
+        create_apply_and_cancel_buttons();
+    }
+    document.getElementById("current_password_change_button").disabled = true;
+}
+
+
+function create_apply_and_cancel_buttons() {
+    const apply_cancel_container = document.getElementById("apply_cancel_container");
+    const apply_changes_button = document.createElement("button");
+    apply_changes_button.id = "apply_changes_button";
+    apply_changes_button.innerHTML = "Apply";
+
+    apply_changes_button.addEventListener("click", function () {
+
+        const current_user_name_editing_field = document.getElementById("current_user_name_editing_field");
+        if (current_user_name_editing_field) {
+            if (current_user_name_editing_field.value == "")
+            {
+                alert("Please fill all required fields");
+                return false;
+            }
+        }
+
+        const current_email_editing_field = document.getElementById("current_email_editing_field");
+        if (current_email_editing_field) {
+            if (!check_email(current_email_editing_field.value)) {
+                alert("You have entered an invalid email address");
+                return false;
+            }
+        }
+
+        const new_password_field = document.getElementById("new_password_field");
+        const retype_new_password_field = document.getElementById("retype_new_password_field");
+        if (new_password_field && retype_new_password_field) {
+            if (new_password_field.value == "" || retype_new_password_field.value == "")
+            {
+                alert("Please fill all required fields");
+                return false;
+            }
+            if (new_password_field.value != retype_new_password_field.value) {
+                alert("Password doesn't match");
+                return false;
+            }
+        }
+
+        const edited_user_data = {
+            "edited_user_name": current_user_name_editing_field ? current_user_name_editing_field.value : null,
+            "edited_email": current_email_editing_field ? current_email_editing_field.value : null,
+            "edited_password": new_password_field ? new_password_field.value : null
+        };
+
+        const token = localStorage.getItem("authorization");  
+        const url = "/auth/update_user";
+        const my_settings = {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "authorization": token},
+        body: JSON.stringify(edited_user_data)
+
+        };
+
+        fetch(url, my_settings)
+            .then(response => {
+                if (response.ok) {
+                    return response.text()
+                    .then(result => {
+                        localStorage.removeItem("authorization");
+                        is_logged_in = false;
+                        apply_cancel_container.innerHTML = "";
+                        document.getElementById("user_info").innerHTML = result;
+                    })
+                }
+                else {
+                    return response.text()
+                    .then(result => {
+                        const user_update_response_message = document.createElement("p");
+                        user_update_response_message.id = "user_update_response_message";
+                        apply_cancel_container.appendChild(user_update_response_message);
+                        user_update_response_message.innerHTML = result;
+                    })
+                }
+            });
+
+    });
+
+    const cancel_changes_button = document.createElement("button");
+    cancel_changes_button.id = "cancel_changes_button";
+    cancel_changes_button.innerHTML = "Cancel";
+    cancel_changes_button.addEventListener("click", function () {
+        location.reload();
+    });
+    apply_cancel_container.appendChild(apply_changes_button);
+    apply_cancel_container.appendChild(cancel_changes_button);
+}
+// *** user data editing end
+
+
+// *** check edited email start
+function check_email(email) {
+    const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+}
+// *** check edited email end
+
+
+// *** show all users start
+function show_all_users() {
+
+    const token = localStorage.getItem("authorization");  
+    const url = "/auth/all_users";
+    const my_settings = {
+        method: "GET",
+        headers: {"authorization": token}
+    };
+
+    fetch(url, my_settings)
+    .then(response => {
+        if (response.ok) {
+            return response.text();
+        }
+        else {
+            return response.text();
+        }
+    })
+
+    .then(result => {
+        document.getElementById("all_users").innerHTML = result;
+    });
+
+
+
+    // window.location = "../auth/all_users";
+}
+
+// *** show all users end

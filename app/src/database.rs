@@ -123,18 +123,89 @@ pub fn verify_user_by_name_and_email(user_data: &TokenData<models::Claims>, conn
 }
 
 
-pub fn find_all_users(conn: &PgConnection)
-    -> Result<Option<Vec<models::User>>, diesel::result::Error>
+fn check_edited_user_data_for_collision(edited_user_data: &web::Json<models::UserUpdateDataRequest>, conn: &PgConnection)
+    -> Result<(), MyError>
 {
     use crate::schema::users_data::dsl::*;
 
-    let all_users = users_data.load::<models::User>(conn).optional()?;
+    let edited_user_name = edited_user_data.edited_user_name.clone();
+    if let Some(edited_user_name) = edited_user_name
+    {
+        if let Ok(_) = users_data.filter(user_name.eq(edited_user_name.to_string())).first::<models::User>(conn)
+        {
+            return Err(MyError::Unauthorized { message: "The name is already in use.".to_string() });
+        }
+    }
 
-    // let existed_user = users_data
-    //     .filter(user_name.eq(user_data.user_name.to_string()))
-    //     .filter(password.eq(modify_password(&user_data.password)))
-    //     .filter(is_active.eq(true))
-    //     .first::<models::User>(conn)
-    //     .optional()?;
+    let edited_email = edited_user_data.edited_email.clone();
+    if let Some(edited_email) = edited_email
+    {
+        if let Ok(_) = users_data.filter(email.eq(edited_email.to_string())).first::<models::User>(conn)
+        {
+            return Err(MyError::Unauthorized { message: "The email is already in use.".to_string() });
+        }
+    }
+
+    Ok(())
+}
+
+
+pub fn update_user_data(edited_user_data: &web::Json<models::UserUpdateDataRequest>, conn: &PgConnection, uid: &str)
+    -> Result<Result<(), MyError>, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    match check_edited_user_data_for_collision(edited_user_data, conn)
+    {
+        Ok(_) =>
+            {
+                let edited_user_name = edited_user_data.edited_user_name.clone();
+                if let Some(edited_user_name) = edited_user_name
+                {
+                    if let Err(e) = diesel::update(users_data.filter(id.eq(uid)))
+                        .set(user_name.eq(&edited_user_name.to_string()))
+                        .execute(conn)
+                    {
+                        return Err(e);
+                    }
+                }
+
+                let edited_email = edited_user_data.edited_email.clone();
+                if let Some(edited_email) = edited_email
+                {
+                    if let Err(e) = diesel::update(users_data.filter(id.eq(uid)))
+                        .set(email.eq(edited_email.to_string()))
+                        .execute(conn)
+                    {
+                        return Err(e);
+                    }
+                }
+
+                let edited_password = edited_user_data.edited_password.clone();
+                if let Some(edited_password) = edited_password
+                {
+                    if let Err(e) = diesel::update(users_data.filter(id.eq(uid)))
+                        .set(password.eq(modify_password(&edited_password.to_string())))
+                        .execute(conn)
+                    {
+                        return Err(e);
+                    }
+                }
+                Ok(Ok(()))
+            },
+        Err(e) => Ok(Err(e))
+    }
+}
+
+
+pub fn extract_users_data(conn: &PgConnection) -> Result<Option<Vec<models::User>>, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    let all_users = users_data
+        .filter(is_superuser.ne(true))
+        .load::<models::User>(conn)
+        .optional()?;
+
     Ok(all_users)
 }

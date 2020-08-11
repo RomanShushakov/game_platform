@@ -292,7 +292,7 @@ function check_registration_data(user_data) {
     let elem = null;
     for (elem in user_data) {
         if (user_data[elem] == null || user_data[elem] == "") {
-            alert("Please Fill All Required Field");
+            alert("Please fill all required fields");
             return false;
         }
     }
@@ -310,7 +310,7 @@ function check_sign_in_data(user_data) {
     let elem = null;
     for (elem in user_data) {
         if (user_data[elem] == null || user_data[elem] == "") {
-            alert("Please Fill All Required Field");
+            alert("Please fill all required fields");
             return false;
         }
     }
@@ -324,25 +324,32 @@ const user_info_button = document.getElementById("user_info_button");
 user_info_button.addEventListener("click", async function() {
     if (is_logged_in) {
 
-        const token = localStorage.getItem("authorization");
+        window.location = "user_info.html";
+        // sendData();
+
+        // window.location.href = "/auth/user_info";
+
+
+        // const token = localStorage.getItem("authorization");
         
-        const url = "/auth/user_info";
+        // const url = "/auth/user_info";
 
-        const my_settings = {
-            method: "GET",
-            headers: {"authorization": token}
-        };
+        // const my_settings = {
+        //     method: "GET",
+        //     headers: {"authorization": token}
+        // };
 
-        const user_info = await fetch(url, my_settings)
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
-                }
-                else {
-                    return response.text();
-                }
-            });
-        document.write(user_info);
+        // const user_info = await fetch(url, my_settings)
+        //     .then(response => {
+        //         if (response.ok) {
+        //             return response.text();
+        //         }
+        //         else {
+        //             return response.text();
+        //         }
+        //     });
+        // document.write(user_info);
+
     }
     else {
         console.log("no info");

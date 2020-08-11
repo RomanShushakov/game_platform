@@ -7,15 +7,14 @@
   </head>
   <body>
 
-    <script defer src="../js/user_info.js"></script>
+    <script defer src="/js/user_info.js"></script>
 
     <div>
 
-      <a href="../index.html">Home</a>
+      <a href="index.html">Home</a>
       <a href="#">Checkers</a>
     
       <button class="authentication_button" id="sign_in_sign_out_button">Sign out</button>
-      <!-- <button class="user_info_button" id="user_info_button">Guest</button> -->
 
       <div id="reloading_data">
 
@@ -25,10 +24,11 @@
 
     </div>
 
-    <div>
-      <p>User name: {{ user_name }}</p>
-      <p>Email: {{ email }}</p>
-    </div>
+    <div id="user_info"></div>
+
+    <div id="apply_cancel_container"></div>
+
+    <div id="all_users"></div>
 
   </body>
 
