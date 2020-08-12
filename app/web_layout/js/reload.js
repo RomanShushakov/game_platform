@@ -25,8 +25,8 @@ async function identify_user() {
                     return response.text()
                     .then(text => {
                         is_logged_in = true;
-                        console.log(is_logged_in);
-                        console.log(JSON.parse(text));
+                        // console.log(is_logged_in);
+                        // console.log(JSON.parse(text));
                         return JSON.parse(text);
                     })
                 }
@@ -34,8 +34,8 @@ async function identify_user() {
                     return response.text()
                     .then(text => {
                         is_logged_in = false;
-                        console.log(is_logged_in);
-                        console.log(text);
+                        // console.log(is_logged_in);
+                        // console.log(text);
                         return {"user_name": "Guest", "error_msg": text};
                     })
                 }
@@ -104,7 +104,6 @@ register_button.addEventListener("click", function () {
 
     const register_submit_button = document.createElement("button");
     register_submit_button.id = "register_submit_button";
-    // register_submit_button.classList.toggle("authentication_button");
     register_submit_button.innerHTML = "Submit";
     reloading_data.appendChild(register_submit_button);
 
@@ -163,16 +162,10 @@ function register_user(user_data) {
                 // return response.json()
                 return response.text()
                     .then(text => {
-                        // throw Error(json["detail"]);
-                        // console.log("Error");
                         register_response_message.textContent = text;
                     });
             }
         });
-    /* .catch(function(err) {
-      console.log(err);
-      response_text.textContent = err;
-    }); */
 };
 // *** registration end
 
@@ -268,16 +261,10 @@ function sign_in_user(user_data) {
             else {
                 return response.text()
                     .then(text => {
-                        // throw Error(json["detail"]);
-                        // console.log("Error");
                         sign_in_response_message.textContent = text;
                     });
             }
         });
-    /* .catch(function(err) {
-      console.log(err);
-      response_text.textContent = err;
-    }); */
 };
 // *** sign in end
 
@@ -325,33 +312,8 @@ user_info_button.addEventListener("click", async function() {
     if (is_logged_in) {
 
         window.location = "user_info.html";
-        // sendData();
-
-        // window.location.href = "/auth/user_info";
-
-
-        // const token = localStorage.getItem("authorization");
-        
-        // const url = "/auth/user_info";
-
-        // const my_settings = {
-        //     method: "GET",
-        //     headers: {"authorization": token}
-        // };
-
-        // const user_info = await fetch(url, my_settings)
-        //     .then(response => {
-        //         if (response.ok) {
-        //             return response.text();
-        //         }
-        //         else {
-        //             return response.text();
-        //         }
-        //     });
-        // document.write(user_info);
-
     }
-    else {
-        console.log("no info");
-    }
+    // else {
+    //     console.log("no info");
+    // }
 });

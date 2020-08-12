@@ -123,7 +123,7 @@ pub fn verify_user_by_name_and_email(user_data: &TokenData<models::Claims>, conn
 }
 
 
-fn check_edited_user_data_for_collision(edited_user_data: &web::Json<models::UserUpdateDataRequest>, conn: &PgConnection)
+fn check_edited_user_data_for_collision(edited_user_data: &web::Json<models::UserUpdateDataRequest>, conn: &PgConnection, uid: &str)
     -> Result<(), MyError>
 {
     use crate::schema::users_data::dsl::*;
@@ -146,6 +146,21 @@ fn check_edited_user_data_for_collision(edited_user_data: &web::Json<models::Use
         }
     }
 
+    let edited_password = edited_user_data.edited_password.clone();
+    if let Some(edited_password) = edited_password
+    {
+        let new_modified_password = modify_password(&edited_password.to_string());
+        if let Ok(previous_data) = users_data.filter(id.eq(uid)).first::<models::User>(conn)
+        {
+            if previous_data.password == new_modified_password
+            {
+                return Err(MyError::Unauthorized {
+                    message: "The inputted password match with your current password, please use another password.".to_string()
+                });
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -155,7 +170,7 @@ pub fn update_user_data(edited_user_data: &web::Json<models::UserUpdateDataReque
 {
     use crate::schema::users_data::dsl::*;
 
-    match check_edited_user_data_for_collision(edited_user_data, conn)
+    match check_edited_user_data_for_collision(edited_user_data, conn, uid)
     {
         Ok(_) =>
             {
@@ -208,4 +223,38 @@ pub fn extract_users_data(conn: &PgConnection) -> Result<Option<Vec<models::User
         .optional()?;
 
     Ok(all_users)
+}
+
+
+pub fn change_user_activity(conn: &PgConnection, uid: &str) -> Result<Result<(), MyError>, diesel::result::Error>
+{
+    use crate::schema::users_data::dsl::*;
+
+    let mut activity_status = true;
+
+    let required_user = users_data
+        .filter(id.eq(uid.to_string()))
+        .first::<models::User>(conn)
+        .optional()?;
+
+    match required_user
+    {
+        Some(user) =>
+            {
+                if user.is_active
+                {
+                    activity_status = false;
+                }
+            }
+        None => return Ok(Err(MyError::Unauthorized { message: "User not found.".to_string() }))
+    }
+
+    if let Err(e) = diesel::update(users_data.filter(id.eq(uid)))
+        .set(is_active.eq(activity_status))
+        .execute(conn)
+    {
+        return Err(e);
+    }
+
+    Ok(Ok(()))
 }

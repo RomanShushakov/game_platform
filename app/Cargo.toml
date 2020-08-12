@@ -27,6 +27,3 @@ jsonwebtoken = "7.2.0"
 chrono = "0.4.13"
 
 askama = "0.10.3"
-
-#actix-service = "1.0.5"
-#futures = "0.3.5"

@@ -1,30 +1,20 @@
 #[macro_use]
 extern crate diesel;
 
-use actix_web::{error, web, FromRequest, HttpResponse, Responder, HttpServer, App, HttpRequest, Result, Resource};
-use actix_http::ResponseBuilder;
-use actix_web::{http::header, http::StatusCode};
+use actix_web::{error, web, FromRequest, HttpResponse, HttpServer, App, HttpRequest, Result};
 use actix_files::Files;
-use serde::{Serialize, Deserialize};
-use failure::Fail;
-use std::collections::HashMap;
 
-use actix_web::{get, middleware, post, Error};
+use actix_web::{middleware, Error};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
-use uuid::Uuid;
-use diesel::expression::exists::exists;
 
-use chrono::{DateTime, Duration, Utc};
+
+use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, TokenData};
 
 use askama::Template;
 use crate::models::User;
 use crate::database::MyError;
-
-// use actix_service::Service;
-// use futures::future::FutureExt;
-// use crate::schema::users_data::dsl::users_data;
 
 mod models;
 mod schema;
@@ -132,15 +122,15 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest)
         match decode_token(received_token.to_str().unwrap()).await
         {
             Ok(user_data) =>
-            {
-                let verified_user = verify_user(user_data, &pool).await;
-                match verified_user
                 {
-                    Ok(Some(user)) => Ok(Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse { user_name: user.user_name, }))),
-                    Ok(None) => Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() })),
-                    Err(e) => Err(e)
-                }
-            },
+                    let verified_user = verify_user(user_data, &pool).await;
+                    match verified_user
+                    {
+                        Ok(Some(user)) => Ok(Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse { user_name: user.user_name, }))),
+                        Ok(None) => Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() })),
+                        Err(e) => Err(e)
+                    }
+                },
             Err(e) => Ok(Err(e))
         }
     }
@@ -153,48 +143,36 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest)
 
 async fn show_user_info(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, Error>
 {
+    let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
+    let undefined_user_response = Ok(HttpResponse::Ok().content_type("text/html").body(user_info));
+
     if let Some(received_token) = request.headers().get("authorization")
     {
-        match decode_token(received_token.to_str().unwrap()).await
+        if let Ok(decoded_user) = decode_token(received_token.to_str().unwrap()).await
         {
-            Ok(user_data) =>
-                {
-                    let verified_user = verify_user(user_data, &pool).await;
-                    match verified_user
+            let verified_user = verify_user(decoded_user, &pool).await;
+            match verified_user
+            {
+                Ok(Some(user)) =>
                     {
-                        Ok(Some(user)) =>
-                            {
-                                if user.is_superuser
-                                {
-                                    let user_info = templates::AuthorizedSuperUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
-                                    Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
-                                }
-                                else
-                                {
-                                    let user_info = templates::AuthorizedUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
-                                    Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
-                                }
-                            },
-                        Ok(None) =>
-                            {
-                                let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
-                                Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
-                            },
-                        Err(e) => Err(e)
-                    }
-                },
-            Err(e) =>
-                {
-                    let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
-                    Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
-                }
+                        if user.is_superuser
+                        {
+                            let user_info = templates::AuthorizedSuperUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
+                            Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+                        }
+                        else
+                        {
+                            let user_info = templates::AuthorizedUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
+                            Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+                        }
+                    },
+                Ok(None) => undefined_user_response,
+                Err(e) => Err(e)
+            }
         }
+        else { undefined_user_response }
     }
-    else
-    {
-        let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
-        Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
-    }
+    else { undefined_user_response }
 }
 
 
@@ -268,6 +246,58 @@ async fn extract_users_data(pool: &web::Data<DbPool>) -> Result<Option<Vec<model
 
 async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, Error>
 {
+    let undefined_user = User::default();
+    let users = vec![undefined_user];
+    let undefined_users = templates::AllUsers { users }.render().unwrap();
+    let undefined_users_response = Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users));
+
+    if let Some(received_token) = request.headers().get("authorization")
+    {
+        if let Ok(decoded_user) = decode_token(received_token.to_str().unwrap()).await
+        {
+            if let Ok(Some(verified_user)) = verify_user(decoded_user, &pool).await
+            {
+                if verified_user.is_superuser
+                {
+                    let all_users = extract_users_data(&pool).await;
+                    match all_users
+                    {
+                        Ok(Some(users)) =>
+                            {
+                                let all_users = templates::AllUsers { users }.render().unwrap();
+                                Ok(HttpResponse::Ok().content_type("text/html").body(all_users))
+                            },
+                        Ok(None) => undefined_users_response,
+                        Err(e) => Err(e)
+                    }
+                }
+                else { undefined_users_response }
+            }
+            else { undefined_users_response }
+        }
+        else { undefined_users_response }
+    }
+    else { undefined_users_response }
+}
+
+
+async fn change_user_activity(pool: &web::Data<DbPool>, uid: String) -> Result<Result<(), database::MyError>, Error>
+{
+    let conn = pool.get().expect("couldn't get db connection from pool");
+    let updated_user = web::block(move || database::change_user_activity(&conn, &uid))
+        .await
+        .map_err(|e|
+            {
+                eprintln!("{}", e);
+                HttpResponse::InternalServerError().finish()
+            })?;
+    Ok(updated_user)
+}
+
+
+async fn change_user_status(user: web::Json<models::UserStatusChangeRequest>, pool: web::Data<DbPool>, request: HttpRequest)
+    -> Result<Result<HttpResponse, database::MyError>, Error>
+{
     if let Some(received_token) = request.headers().get("authorization")
     {
         match decode_token(received_token.to_str().unwrap()).await
@@ -277,61 +307,33 @@ async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<Htt
                     let verified_user = verify_user(user_data, &pool).await;
                     match verified_user
                     {
-                        Ok(Some(user)) =>
+                        Ok(Some(verified_user)) =>
                             {
-                                if user.is_superuser
+                                if verified_user.is_superuser
                                 {
-                                    let all_users = extract_users_data(&pool).await;
-                                    match all_users
+                                    let updated_user = change_user_activity(&pool, user.uid.to_string()).await;
+                                    match updated_user
                                     {
-                                        Ok(Some(users)) =>
-                                            {
-                                                let all_users = templates::AllUsers { users }.render().unwrap();
-                                                Ok(HttpResponse::Ok().content_type("text/html").body(all_users))
-                                            },
-                                        Ok(None) =>
-                                            {
-                                                let undefined_user = User::default();
-                                                let users = vec![undefined_user];
-                                                let undefined_users = templates::AllUsers { users }.render().unwrap();
-                                                Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users))
-                                            },
+                                        Ok(Ok(_)) => Ok(Ok(HttpResponse::Ok().content_type("text/html").body("User status was successfully changed."))),
+                                        Ok(Err(e)) => Ok(Err(e)),
                                         Err(e) => Err(e)
                                     }
                                 }
                                 else
                                 {
-                                    let undefined_user = User::default();
-                                    let users = vec![undefined_user];
-                                    let undefined_users = templates::AllUsers { users }.render().unwrap();
-                                    Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users))
+                                    Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } ))
                                 }
                             },
-                        Ok(None) =>
-                            {
-                                let undefined_user = User::default();
-                                let users = vec![undefined_user];
-                                let undefined_users = templates::AllUsers { users }.render().unwrap();
-                                Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users))
-                            },
+                        Ok(None) => Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } )),
                         Err(e) => Err(e)
                     }
                 },
-            Err(e) =>
-                {
-                    let undefined_user = User::default();
-                    let users = vec![undefined_user];
-                    let undefined_users = templates::AllUsers { users }.render().unwrap();
-                    Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users))
-                }
+            Err(e) => Ok(Err(e))
         }
     }
     else
     {
-        let undefined_user = User::default();
-        let users = vec![undefined_user];
-        let undefined_users = templates::AllUsers { users }.render().unwrap();
-        Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users))
+        Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() } ))
     }
 }
 
@@ -360,17 +362,6 @@ async fn main() -> std::io::Result<()>
                 // set up DB pool to be used with web::Data<Pool> extractor
                 .data(pool.clone())
                 .wrap(middleware::Logger::default())
-
-                // .wrap_fn(|req, srv|
-                //     {
-                //         println!("Hi from start. You requested: {}", req.path());
-                //         srv.call(req).map(|res|
-                //         {
-                //             println!("Hi from response");
-                //             res
-                //         })
-                //     })
-
                 .service(
                     web::scope("/auth")
                         .service(
@@ -423,7 +414,9 @@ async fn main() -> std::io::Result<()>
                             )
                             .route(web::post().to(update_user)), )
 
-                        .route("/all_users", web::get().to(show_users)))
+                        .route("/all_users", web::get().to(show_users))
+
+                        .route("/change_user_status", web::post().to(change_user_status)))
 
                 .service(Files::new("", "./web_layout").index_file("index.html"))
         })

@@ -24,8 +24,8 @@ async function identify_user() {
                     return response.text()
                     .then(text => {
                         is_logged_in = true;
-                        console.log(is_logged_in);
-                        console.log(JSON.parse(text));
+                        // console.log(is_logged_in);
+                        // console.log(JSON.parse(text));
                         return JSON.parse(text);
                     })
                 }
@@ -33,8 +33,8 @@ async function identify_user() {
                     return response.text()
                     .then(text => {
                         is_logged_in = false;
-                        console.log(is_logged_in);
-                        console.log(text);
+                        // console.log(is_logged_in);
+                        // console.log(text);
                         return {"user_name": "Guest", "error_msg": text};
                     })
                 }
@@ -71,16 +71,6 @@ window.onload = function () {
                 .then(result => {
                     document.getElementById("user_info").innerHTML = result;
                 });
-                // .then(function() {
-                //     const current_user_name_edit_button = document.getElementById("current_user_name_edit_button");
-                //     const current_email_edit_button = document.getElementById("current_email_edit_button");
-
-                //     current_email_edit_button.addEventListener("click", function () {
-                //         const current_email = document.getElementById("current_email");
-                //         console.log(current_email.textContent);
-                //     });
-
-                // });
         }
         else {
             window.location = "../";
@@ -108,13 +98,13 @@ function add_greeting(user_name) {
 const sign_in_sign_out_button = document.getElementById("sign_in_sign_out_button");
 sign_in_sign_out_button.addEventListener("click", function () {
     if (!is_logged_in) {
-        console.log("user_info_logged_in");
+        // console.log("user_info_logged_in");
         window.location = "../";
     }
     else {
         localStorage.removeItem("authorization");
         is_logged_in = false;
-        console.log("user_info");
+        // console.log("user_info");
         window.location = "../";
     }
 });
@@ -123,8 +113,7 @@ sign_in_sign_out_button.addEventListener("click", function () {
 
 
 // *** user data editing start
-function edit_name(id) {
-    console.log(id);
+function edit_name() {
     const current_user_name_editing_container = document.getElementById("user_name_editing_container");
     const current_user_name_editing_field = document.createElement("input");
     current_user_name_editing_field.id = "current_user_name_editing_field";
@@ -136,11 +125,31 @@ function edit_name(id) {
         create_apply_and_cancel_buttons();
     }
     document.getElementById("current_user_name_edit_button").disabled = true;
+    document.getElementById("current_user_name_edit_cancel_button").disabled = false;
 }
 
 
-function edit_email(id) {
-    console.log(id);
+function cancel_edit_name() {
+    const current_user_name_editing_container = document.getElementById("user_name_editing_container");
+    current_user_name_editing_container.innerHTML = "";
+    document.getElementById("current_user_name_edit_button").disabled = false;
+    document.getElementById("current_user_name_edit_cancel_button").disabled = true;
+
+    if (document.getElementById("current_password_change_cancel_button").disabled && 
+        document.getElementById("current_email_edit_cancel_button").disabled && 
+        document.getElementById("current_user_name_edit_cancel_button").disabled) {
+
+        document.getElementById("apply_changes_button").remove();  
+        document.getElementById("cancel_changes_button").remove();
+
+        if (document.getElementById("user_update_response_message")) {
+            document.getElementById("user_update_response_message").remove();
+        }
+    }
+}
+
+
+function edit_email() {
     const current_email_edit_container = document.getElementById("email_editing_container");
     const current_email_editing_field = document.createElement("input");
     current_email_editing_field.id = "current_email_editing_field";
@@ -151,11 +160,31 @@ function edit_email(id) {
         create_apply_and_cancel_buttons();
     }
     document.getElementById("current_email_edit_button").disabled = true;
+    document.getElementById("current_email_edit_cancel_button").disabled = false;
 }
 
 
-function change_password(id) {
-    console.log(id);
+function cancel_edit_email() {
+    const current_email_edit_container = document.getElementById("email_editing_container");
+    current_email_edit_container.innerHTML = "";
+    document.getElementById("current_email_edit_button").disabled = false;
+    document.getElementById("current_email_edit_cancel_button").disabled = true;
+
+    if (document.getElementById("current_password_change_cancel_button").disabled && 
+        document.getElementById("current_email_edit_cancel_button").disabled && 
+        document.getElementById("current_user_name_edit_cancel_button").disabled) {
+
+        document.getElementById("apply_changes_button").remove();  
+        document.getElementById("cancel_changes_button").remove();
+
+        if (document.getElementById("user_update_response_message")) {
+            document.getElementById("user_update_response_message").remove();
+        }
+    }
+}
+
+
+function change_password() {
     const current_password_change_container = document.getElementById("password_change_container");
     const new_password_field = document.createElement("input");
     new_password_field.id = "new_password_field";
@@ -173,6 +202,27 @@ function change_password(id) {
         create_apply_and_cancel_buttons();
     }
     document.getElementById("current_password_change_button").disabled = true;
+    document.getElementById("current_password_change_cancel_button").disabled = false;
+}
+
+
+function cancel_change_password() {
+    const current_password_change_container = document.getElementById("password_change_container");
+    current_password_change_container.innerHTML = "";
+    document.getElementById("current_password_change_button").disabled = false;
+    document.getElementById("current_password_change_cancel_button").disabled = true;
+
+    if (document.getElementById("current_password_change_cancel_button").disabled && 
+        document.getElementById("current_email_edit_cancel_button").disabled && 
+        document.getElementById("current_user_name_edit_cancel_button").disabled) {
+
+        document.getElementById("apply_changes_button").remove();  
+        document.getElementById("cancel_changes_button").remove();
+
+        if (document.getElementById("user_update_response_message")) {
+            document.getElementById("user_update_response_message").remove();
+        }
+    }
 }
 
 
@@ -244,10 +294,19 @@ function create_apply_and_cancel_buttons() {
                 else {
                     return response.text()
                     .then(result => {
-                        const user_update_response_message = document.createElement("p");
-                        user_update_response_message.id = "user_update_response_message";
-                        apply_cancel_container.appendChild(user_update_response_message);
-                        user_update_response_message.innerHTML = result;
+                        if (result == "Session has expired, please login again.") {
+                            is_logged_in = false;
+                            window.location = "../";
+                        }
+                        else if (document.getElementById("user_update_response_message")) {
+                            user_update_response_message.innerHTML = result;
+                        }
+                        else {
+                            const user_update_response_message = document.createElement("p");
+                            user_update_response_message.id = "user_update_response_message";
+                            apply_cancel_container.appendChild(user_update_response_message);
+                            user_update_response_message.innerHTML = result;
+                        }
                     })
                 }
             });
@@ -274,7 +333,7 @@ function check_email(email) {
 // *** check edited email end
 
 
-// *** show all users start
+// *** show hide all users start
 function show_all_users() {
 
     const token = localStorage.getItem("authorization");  
@@ -296,11 +355,44 @@ function show_all_users() {
 
     .then(result => {
         document.getElementById("all_users").innerHTML = result;
+        document.getElementById("show_all_users_info_button").disabled = true;
+        document.getElementById("hide_all_users_info_button").disabled = false;
     });
-
-
-
-    // window.location = "../auth/all_users";
 }
 
-// *** show all users end
+
+function hide_all_users() {
+    document.getElementById("all_users").innerHTML = "";
+    document.getElementById("show_all_users_info_button").disabled = false;
+    document.getElementById("hide_all_users_info_button").disabled = true;
+}
+// *** show hide all users end
+
+
+// *** change user status start
+function change_user_status(id) {
+
+    const token = localStorage.getItem("authorization");  
+    const url = "/auth/change_user_status";
+    const required_user_data = { "uid": id };
+    const my_settings = {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "authorization": token},
+        body: JSON.stringify(required_user_data)
+    };
+
+    fetch(url, my_settings)
+    .then(response => {
+        if (response.ok) {
+            return response.text();
+        }
+        else {
+            return response.text();
+        }
+    })
+    .then(result => {
+        alert(result);
+        show_all_users();
+    })
+}
+// *** change user status end

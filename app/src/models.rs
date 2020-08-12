@@ -81,3 +81,10 @@ pub struct UserUpdateDataRequest
     pub edited_email: Option<String>,
     pub edited_password: Option<String>
 }
+
+
+#[derive(Deserialize)]
+pub struct UserStatusChangeRequest
+{
+    pub uid: String
+}

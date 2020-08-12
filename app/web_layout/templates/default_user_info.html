@@ -1,20 +1,29 @@
 <div>
+  
   <p id="current_user_name">User name: {{ user_name }}</p>
 
   <div id="user_name_editing_container"></div>
 
-  <button id="current_user_name_edit_button" onclick="edit_name(this.id)">edit</button>
+  <button id="current_user_name_edit_button" onclick="edit_name()">edit</button>
+
+  <button id="current_user_name_edit_cancel_button" onclick="cancel_edit_name()" disabled>cancel</button>
   
   <p id="current_email">Email: {{ email }} </p>
 
   <div id="email_editing_container"></div>
 
-  <button id="current_email_edit_button" onclick="edit_email(this.id)">edit</button>
+  <button id="current_email_edit_button" onclick="edit_email()">edit</button>
+
+  <button id="current_email_edit_cancel_button" onclick="cancel_edit_email()" disabled>cancel</button>
 
   <p>
-    <button id="current_password_change_button" onclick="change_password(this.id)">change password</button>
+    <div id="password_change_container"></div>
   </p>
 
-  <div id="password_change_container"></div>
+  <p>
+    <button id="current_password_change_button" onclick="change_password()">change password</button>
+
+    <button id="current_password_change_cancel_button" onclick="cancel_change_password()" disabled>cancel</button>
+  </p>
 
 </div>
