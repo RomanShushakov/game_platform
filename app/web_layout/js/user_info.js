@@ -188,10 +188,12 @@ function change_password() {
     const current_password_change_container = document.getElementById("password_change_container");
     const new_password_field = document.createElement("input");
     new_password_field.id = "new_password_field";
+    new_password_field.type = "password";
     new_password_field.placeholder = "input new password";
 
     const retype_new_password_field = document.createElement("input");
     retype_new_password_field.id = "retype_new_password_field";
+    retype_new_password_field.type = "password";
     retype_new_password_field.placeholder = "retype new password";
 
     current_password_change_container.appendChild(new_password_field);

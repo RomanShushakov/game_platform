@@ -25,7 +25,7 @@ mod templates;
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>)
-    -> Result<Result<String, database::MyError> , Error>
+    -> Result<Result<HttpResponse, database::MyError> , Error>
 {
     let message = "Registration was successfully completed!".to_string();
 
@@ -40,7 +40,7 @@ async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::Use
             })?;
     match user
     {
-        Ok(_)=> Ok(Ok(message)),
+        Ok(_)=> Ok(Ok(HttpResponse::Ok().body(message))),
         Err(err) => Ok(Err(err))
     }
 }
@@ -192,7 +192,7 @@ async fn update_user_data(pool: &web::Data<DbPool>, edited_user_data: web::Json<
 
 
 async fn update_user(pool: web::Data<DbPool>, edited_user_data: web::Json<models::UserUpdateDataRequest>, request: HttpRequest)
-    -> Result<Result<String, database::MyError> , Error>
+    -> Result<Result<HttpResponse, database::MyError> , Error>
 {
     let message = "User data were successfully updated!".to_string();
 
@@ -210,7 +210,7 @@ async fn update_user(pool: web::Data<DbPool>, edited_user_data: web::Json<models
                                 let updated_user = update_user_data(&pool, edited_user_data, user.id).await;
                                 match updated_user
                                 {
-                                    Ok(Ok(_)) => Ok(Ok(message)),
+                                    Ok(Ok(_)) => Ok(Ok(HttpResponse::Ok().body(message))),
                                     Ok(Err(e)) => Ok(Err(e)),
                                     Err(e) => Err(e)
                                 }

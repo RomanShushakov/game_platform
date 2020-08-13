@@ -100,6 +100,7 @@ register_button.addEventListener("click", function () {
     const registration_password = document.createElement("input");
     registration_password.id = "registration_password";
     registration_password.placeholder = "password";
+    registration_password.type = "password";
     reloading_data.appendChild(registration_password);
 
     const register_submit_button = document.createElement("button");
@@ -199,6 +200,7 @@ function sign_in_form_uploading() {
 
     const sign_in_password = document.createElement("input");
     sign_in_password.id = "sign_in_password";
+    sign_in_password.type = "password";
     sign_in_password.placeholder = "password";
     reloading_data.appendChild(sign_in_password);
 

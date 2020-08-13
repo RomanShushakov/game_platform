@@ -1,26 +1,74 @@
-
-.user_info_button 
-{
-    background: none;
-    border: none;
-    padding: 0;
-    /*optional*/
-    font-family: arial, sans-serif;
-    /*input has OS specific font-family*/
-    color: #069;
-    text-decoration: underline;
-    cursor: pointer;
+* {
+    box-sizing: border-box;
 }
 
-.authentication_button 
-{
-    background: none;
-    border: none;
+
+html,
+body {
+    margin: 0;
     padding: 0;
-    /*optional*/
-    font-family: arial, sans-serif;
-    /*input has OS specific font-family*/
-    color: #069;
-    text-decoration: underline;
-    cursor: pointer;
+    font: sans-serif;
+}
+
+
+a {
+    text-decoration: none;
+}
+
+
+img {
+    max-width: 100%;
+}
+
+
+ul {
+    padding: 0;
+    list-style: none;
+}
+
+
+.container {
+    margin: 0 auto;
+    /* min-width: 300px; */
+}
+
+
+.header .container {
+    display: flex;
+    align-items: center;
+    background-color: rgb(224, 202, 176);
+    box-sizing: content-box;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-bottom: 0.15rem solid grey;
+}
+
+
+.header_list {
+    display: flex;
+}
+
+
+.header_list_item {
+    margin-left: 1.0rem;
+}
+
+
+.authentication_buttons {
+    display: inline-block;
+    margin-left: auto;
+}
+
+
+.authentication_buttons .button {
+    background-color: #31BDC6;
+    border-radius: 7.5px;
+    height: 1.5rem;
+    border: 1.0px;
+    margin-left: 0.5rem;
+}
+
+
+h3 {
+    color: blue;
 }
