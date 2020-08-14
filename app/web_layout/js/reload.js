@@ -48,7 +48,7 @@ async function identify_user() {
 window.onload = function () {
     identify_user()
     .then(user_data => {
-        add_startup_greeting(user_data["user_name"]); 
+        // add_startup_greeting(user_data["user_name"]); 
         if (is_logged_in) {
             const sign_out_button = document.getElementById("sign_in_sign_out_button");
             sign_out_button.innerHTML = "Sign out";
@@ -62,10 +62,10 @@ window.onload = function () {
 };
 
 
-function add_startup_greeting(user_name) {
-    const greeting = document.getElementById("greeting");
-    greeting.innerHTML = `Hello ${user_name}!`;
-}
+// function add_startup_greeting(user_name) {
+//     const greeting = document.getElementById("greeting");
+//     greeting.innerHTML = `Hello ${user_name}!`;
+// }
 
 
 function add_greeting(user_name) {
@@ -89,32 +89,36 @@ register_button.addEventListener("click", function () {
     
     const registration_user_name = document.createElement("input");
     registration_user_name.id = "registration_user_name";
+    registration_user_name.className = "authentication_input_field";
     registration_user_name.placeholder = "user name";
     reloading_data.appendChild(registration_user_name);
 
     const registration_email = document.createElement("input");
     registration_email.id = "registration_email";
+    registration_email.className = "authentication_input_field";
     registration_email.placeholder = "email";
     reloading_data.appendChild(registration_email);
 
     const registration_password = document.createElement("input");
     registration_password.id = "registration_password";
+    registration_password.className = "authentication_input_field";
     registration_password.placeholder = "password";
     registration_password.type = "password";
     reloading_data.appendChild(registration_password);
 
     const register_submit_button = document.createElement("button");
     register_submit_button.id = "register_submit_button";
+    register_submit_button.className = "button";
     register_submit_button.innerHTML = "Submit";
     reloading_data.appendChild(register_submit_button);
 
-    const register_response_message = document.createElement("p");
+    const register_response_message = document.createElement("h4");
     register_response_message.id = "register_response_message";
     reloading_data.appendChild(register_response_message);
 
     identify_user()
     .then(user_data => {
-        add_greeting(user_data["user_name"]);
+        // add_greeting(user_data["user_name"]);
         const user_info_button = document.getElementById("user_info_button");
         user_info_button.innerHTML = user_data["user_name"];
     });
@@ -152,6 +156,7 @@ function register_user(user_data) {
                         reloading_data.innerHTML = registration_successfull_header;
                         const sign_in_button = document.createElement("button");
                         sign_in_button.id = "sign_in_button";
+                        sign_in_button.className = "button";
                         sign_in_button.innerHTML = "Sign in";
                         reloading_data.appendChild(sign_in_button);
                         sign_in_button.addEventListener("click", function () {
@@ -195,27 +200,30 @@ function sign_in_form_uploading() {
 
     const sign_in_user_name = document.createElement("input");
     sign_in_user_name.id = "sign_in_user_name";
+    sign_in_user_name.className = "authentication_input_field";
     sign_in_user_name.placeholder = "user name";
     reloading_data.appendChild(sign_in_user_name);
 
     const sign_in_password = document.createElement("input");
     sign_in_password.id = "sign_in_password";
+    sign_in_password.className = "authentication_input_field";
     sign_in_password.type = "password";
     sign_in_password.placeholder = "password";
     reloading_data.appendChild(sign_in_password);
 
     const login_button = document.createElement("button");
     login_button.id = "login_button";
+    login_button.className = "button";
     login_button.innerHTML = "Login";
     reloading_data.appendChild(login_button);
 
-    const sign_in_response_message = document.createElement("p");
+    const sign_in_response_message = document.createElement("h4");
     sign_in_response_message.id = "sign_in_response_message";
     reloading_data.appendChild(sign_in_response_message);
 
     identify_user()
     .then(user_data => {
-        add_greeting(user_data["user_name"]);
+        // add_greeting(user_data["user_name"]);
         const user_info_button = document.getElementById("user_info_button");
         user_info_button.innerHTML = user_data["user_name"];
      });

@@ -1,29 +1,22 @@
-<div>
-  
-  <p id="current_user_name">User name: {{ user_name }}</p>
 
-  <div id="user_name_editing_container"></div>
-
+<div id="user_name_editing_container">
+  <p>User name:</p>
+  <input id="current_user_name_editing_field" placeholder="{{ user_name }}" disabled>
   <button id="current_user_name_edit_button" onclick="edit_name()">edit</button>
-
   <button id="current_user_name_edit_cancel_button" onclick="cancel_edit_name()" disabled>cancel</button>
-  
-  <p id="current_email">Email: {{ email }} </p>
+</div>
 
-  <div id="email_editing_container"></div>
-
+<div id="email_editing_container">
+  <p>Email:</p>
+  <input id="current_email_editing_field" placeholder="{{ email }}" disabled>
   <button id="current_email_edit_button" onclick="edit_email()">edit</button>
-
   <button id="current_email_edit_cancel_button" onclick="cancel_edit_email()" disabled>cancel</button>
+</div>
 
-  <p>
-    <div id="password_change_container"></div>
-  </p>
-
-  <p>
-    <button id="current_password_change_button" onclick="change_password()">change password</button>
-
-    <button id="current_password_change_cancel_button" onclick="cancel_change_password()" disabled>cancel</button>
-  </p>
-
+<div id="password_editing_container">
+  <p>Password:</p>
+  <input id="new_password_field" type="password" placeholder="enter new password" disabled>
+  <input id="retype_new_password_field" type="password" placeholder="retype new password" disabled>
+  <button id="current_password_change_button" onclick="change_password()">change password</button>
+  <button id="current_password_change_cancel_button" onclick="cancel_change_password()" disabled>cancel</button>
 </div>

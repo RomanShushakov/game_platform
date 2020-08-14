@@ -29,7 +29,7 @@ ul {
 
 .container {
     margin: 0 auto;
-    /* min-width: 300px; */
+    min-width: 250px;
 }
 
 
@@ -60,12 +60,44 @@ ul {
 }
 
 
-.authentication_buttons .button {
+.button {
     background-color: #31BDC6;
     border-radius: 7.5px;
     height: 1.5rem;
     border: 1.0px;
     margin-left: 0.5rem;
+}
+
+
+.main .container {
+    display: flex;
+    align-items: center;
+    box-sizing: content-box;
+    flex-direction: column;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+
+.apply_cancel_container {
+    display: flex;
+    align-items: center;
+    box-sizing: content-box;
+    flex-direction: row;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+
+.apply_cancel_container .button {
+    margin-right: 0.5rem;
+    width: 5.0rem;
+}
+
+
+.authentication_input_field {
+    margin-bottom: 0.5rem;
 }
 
 
