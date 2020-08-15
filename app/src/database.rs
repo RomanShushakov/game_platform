@@ -155,7 +155,7 @@ fn check_edited_user_data_for_collision(edited_user_data: &web::Json<models::Use
             if previous_data.password == new_modified_password
             {
                 return Err(MyError::Unauthorized {
-                    message: "The inputted password match with your current password, please use another password.".to_string()
+                    message: "The new and current passwords should be different.".to_string()
                 });
             }
         }

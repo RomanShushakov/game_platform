@@ -70,6 +70,7 @@ window.onload = function () {
                 })
                 .then(result => {
                     document.getElementById("user_info").innerHTML = result;
+                    enable_apply_reset_changes_buttons();
                 });
         }
         else {
@@ -186,86 +187,90 @@ function activate_apply_changes_button() {
 }
 
 
-apply_changes_button.addEventListener("click", function () {
-    const current_user_name_editing_field = document.getElementById("current_user_name_editing_field");
-    if (!current_user_name_editing_field.disabled) {
-        if (current_user_name_editing_field.value == "")
-        {
-            alert("Please fill all required fields.");
-            return false;
-        }
-    }
-
-    const current_email_editing_field = document.getElementById("current_email_editing_field");
-    if (!current_email_editing_field.disabled) {
-        if (!check_email(current_email_editing_field.value)) {
-            alert("You have entered an invalid email address.");
-            return false;
-        }
-    }
-
-    const new_password_field = document.getElementById("new_password_field");
-    const retype_new_password_field = document.getElementById("retype_new_password_field");
-    if (!new_password_field.disabled && !retype_new_password_field.disabled) {
-        if (new_password_field.value == "" || retype_new_password_field.value == "")
-        {
-            alert("Please fill all required fields.");
-            return false;
-        }
-        if (new_password_field.value != retype_new_password_field.value) {
-            alert("Password doesn't match.");
-            return false;
-        }
-    }
-
-    const edited_user_data = {
-        "edited_user_name": !current_user_name_editing_field.disabled ? current_user_name_editing_field.value : null,
-        "edited_email": !current_email_editing_field.disabled ? current_email_editing_field.value : null,
-        "edited_password": !new_password_field.disabled ? new_password_field.value : null
-    };
-
-    const token = localStorage.getItem("authorization");  
-    const url = "/auth/update_user";
-    const my_settings = {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "authorization": token},
-    body: JSON.stringify(edited_user_data)
-
-    };
-
-    fetch(url, my_settings)
-        .then(response => {
-            if (response.ok) {
-                return response.text()
-                .then(result => {
-                    localStorage.removeItem("authorization");
-                    is_logged_in = false;
-                    document.getElementById("user_info").remove();
-                    document.getElementById("apply_cancel_container").remove();
-                    document.getElementById("user_data_change_response_message").innerHTML = result;
-                })
+function enable_apply_reset_changes_buttons() {
+    const apply_changes_button = document.getElementById("apply_changes_button");
+    apply_changes_button.addEventListener("click", function () {
+        const current_user_name_editing_field = document.getElementById("current_user_name_editing_field");
+        if (!current_user_name_editing_field.disabled) {
+            if (current_user_name_editing_field.value == "")
+            {
+                alert("Please fill all required fields.");
+                return false;
             }
-            else {
-                return response.text()
-                .then(result => {
-                    if (result == "Session has expired, please login again.") {
+        }
+    
+        const current_email_editing_field = document.getElementById("current_email_editing_field");
+        if (!current_email_editing_field.disabled) {
+            if (!check_email(current_email_editing_field.value)) {
+                alert("You have entered an invalid email address.");
+                return false;
+            }
+        }
+    
+        const new_password_field = document.getElementById("new_password_field");
+        const retype_new_password_field = document.getElementById("retype_new_password_field");
+        if (!new_password_field.disabled && !retype_new_password_field.disabled) {
+            if (new_password_field.value == "" || retype_new_password_field.value == "")
+            {
+                alert("Please fill all required fields.");
+                return false;
+            }
+            if (new_password_field.value != retype_new_password_field.value) {
+                alert("Password doesn't match.");
+                return false;
+            }
+        }
+    
+        const edited_user_data = {
+            "edited_user_name": !current_user_name_editing_field.disabled ? current_user_name_editing_field.value : null,
+            "edited_email": !current_email_editing_field.disabled ? current_email_editing_field.value : null,
+            "edited_password": !new_password_field.disabled ? new_password_field.value : null
+        };
+    
+        const token = localStorage.getItem("authorization");  
+        const url = "/auth/update_user";
+        const my_settings = {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "authorization": token},
+        body: JSON.stringify(edited_user_data)
+    
+        };
+    
+        fetch(url, my_settings)
+            .then(response => {
+                if (response.ok) {
+                    return response.text()
+                    .then(result => {
+                        localStorage.removeItem("authorization");
                         is_logged_in = false;
-                        window.location = "../";
-                    }
-                    else {
+                        document.getElementById("user_name_editing_container").remove();
+                        document.getElementById("email_editing_container").remove();
+                        document.getElementById("password_editing_container").remove();
+                        document.getElementById("apply_cancel_container").remove();
                         document.getElementById("user_data_change_response_message").innerHTML = result;
-                    }
-                })
-            }
-        });
+                    })
+                }
+                else {
+                    return response.text()
+                    .then(result => {
+                        if (result == "Session has expired, please login again.") {
+                            is_logged_in = false;
+                            window.location = "../";
+                        }
+                        else {
+                            document.getElementById("user_data_change_response_message").innerHTML = result;
+                        }
+                    })
+                }
+            });
+    
+    });
 
-});
-
-
-const reset_changes_button = document.getElementById("reset_changes_button");
-reset_changes_button.addEventListener("click", function () {
-    location.reload();
-});
+    const reset_changes_button = document.getElementById("reset_changes_button");
+    reset_changes_button.addEventListener("click", function () {
+        location.reload();
+    });
+}
 // *** user data editing end
 
 

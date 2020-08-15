@@ -1,21 +1,32 @@
 
 <h3>All users</h3>
 
-{% for user in users %}
-  <p>
-    User name: {{ user.user_name|e }}, email: {{ user.email|e }}, is_active: {{ user.is_active|e }}
+<table id="tags_table" border="1" style="border-collapse: collapse;">
+  <thead>
+    <tr>
+      <th>User name</th>
+      <th>Email</th>
+      <th>Is active</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
 
-    <button id="{{ user.id|e }}" onclick="change_user_status(this.id)">
-
-      {% if user.is_active %}
-
-        deactivate
-      {% else %}
-
-        activate
-        
-      {% endif %}
-    </button>
-
-  </p>
-{% endfor %}
+    {% for user in users %}
+      <tr>
+        <td>{{ user.user_name|e }}</td>
+        <td>{{ user.email|e }}</td>
+        <td>{{ user.is_active|e }}</td>
+        <td>
+          <button id="{{ user.id|e }}" onclick="change_user_status(this.id)">
+            {% if user.is_active %}
+              deactivate
+            {% else %} 
+              activate            
+            {% endif %}
+          </button>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

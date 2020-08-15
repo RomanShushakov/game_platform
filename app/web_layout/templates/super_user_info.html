@@ -1,32 +1,34 @@
-<div>
 
+<div id="user_name_editing_container">
+  <p>User name:</p>
+  <input id="current_user_name_editing_field" placeholder="{{ user_name }}" disabled>
+  <button id="current_user_name_edit_button" onclick="edit_name()">edit</button>
+  <button id="current_user_name_edit_cancel_button" onclick="cancel_edit_name()" disabled>cancel</button>
+</div>
+
+<div id="email_editing_container">
+  <p>Email:</p>
+  <input id="current_email_editing_field" placeholder="{{ email }}" disabled>
+  <button id="current_email_edit_button" onclick="edit_email()">edit</button>
+  <button id="current_email_edit_cancel_button" onclick="cancel_edit_email()" disabled>cancel</button>
+</div>
+
+<div id="password_editing_container">
+  <p>Password:</p>
+  <input id="new_password_field" type="password" placeholder="enter new password" disabled>
+  <input id="retype_new_password_field" type="password" placeholder="retype new password" disabled>
+  <button id="current_password_change_button" onclick="change_password()">change password</button>
+  <button id="current_password_change_cancel_button" onclick="cancel_change_password()" disabled>cancel</button>
+</div>
+
+<div id="apply_cancel_container" class="apply_cancel_container">
+  <button id="apply_changes_button" class="button" disabled>Apply</button>
+  <button id="reset_changes_button" class="button">Reset</button>
+</div>
+
+<h4 id="user_data_change_response_message" class="user_data_change_response_message"></h4>
+
+<div class="all_users_info">
   <button id="show_all_users_info_button" onclick="show_all_users()">show all users</button>
   <button id="hide_all_users_info_button" onclick="hide_all_users()" disabled>hide all users</button>
-
-  <p id="current_user_name">User name: {{ user_name }}</p>
-
-  <div id="user_name_editing_container"></div>
-
-  <button id="current_user_name_edit_button" onclick="edit_name()">edit</button>
-
-  <button id="current_user_name_edit_cancel_button" onclick="cancel_edit_name()" disabled>cancel</button>
-  
-  <p id="current_email">Email: {{ email }} </p>
-
-  <div id="email_editing_container"></div>
-
-  <button id="current_email_edit_button" onclick="edit_email()">edit</button>
-
-  <button id="current_email_edit_cancel_button" onclick="cancel_edit_email()" disabled>cancel</button>
-
-  <p>
-    <div id="password_change_container"></div>
-  </p>
-
-  <p>
-    <button id="current_password_change_button" onclick="change_password()">change password</button>
-
-    <button id="current_password_change_cancel_button" onclick="cancel_change_password()" disabled>cancel</button>
-  </p>
-
 </div>
