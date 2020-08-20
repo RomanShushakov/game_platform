@@ -1,0 +1,15 @@
+use yew_router::prelude::*;
+
+
+#[derive(Switch, Debug, Clone)]
+pub enum Route
+{
+    #[to = "/#auth/sign_in_user"]
+    SignInUser,
+    #[to = "/#auth/register_user"]
+    RegisterUser,
+    #[to = "/#auth/user_info"]
+    UserInfo,
+    #[to = "/"]
+    HomePage,
+}

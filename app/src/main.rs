@@ -65,7 +65,7 @@ async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::User
         let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
         let key = secret_key.as_bytes();
 
-        let expiration_date = Utc::now() + Duration::minutes(30);
+        let expiration_date = Utc::now() + Duration::minutes(360);
         let claims = models::Claims
             { user_name: user.user_name.to_string(), email: user.email.to_string(), exp: expiration_date.timestamp() as usize };
         let token = encode(&Header::default(), &claims,&EncodingKey::from_secret(key)).unwrap();
@@ -418,7 +418,8 @@ async fn main() -> std::io::Result<()>
 
                         .route("/change_user_status", web::post().to(change_user_status)))
 
-                .service(Files::new("", "./web_layout").index_file("index.html"))
+                // .service(Files::new("", "./web_layout").index_file("index.html"))
+                .service(Files::new("", "../yew_app/web_layout").index_file("index.html"))
         })
     .bind(&bind)?
     .run()

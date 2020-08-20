@@ -1,0 +1,125 @@
+* {
+    box-sizing: border-box;
+}
+
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font: sans-serif;
+}
+
+
+a {
+    text-decoration: none;
+}
+
+
+img {
+    max-width: 100%;
+}
+
+
+ul {
+    padding: 0;
+    list-style: none;
+}
+
+
+.container {
+    margin: 0 auto;
+    min-width: 250px;
+}
+
+
+h3 {
+    color: blue;
+}
+
+
+.header .container {
+    display: flex;
+    align-items: center;
+    background-color: rgb(224, 202, 176);
+    box-sizing: content-box;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-bottom: 0.15rem solid grey;
+}
+
+
+.header_list {
+    display: flex;
+}
+
+
+.header_list_item {
+    margin-left: 1.0rem;
+}
+
+
+.authentication_buttons {
+    display: inline-block;
+    margin-left: auto;
+}
+
+
+.button {
+    background-color: #31BDC6;
+    border-radius: 7.5px;
+    height: 1.5rem;
+    border: 1.0px;
+    margin-left: 0.5rem;
+}
+
+
+.main .container {
+    display: flex;
+    align-items: center;
+    box-sizing: content-box;
+    flex-direction: column;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+
+.user_info_container {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.apply_cancel_container {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    box-sizing: content-box;
+    flex-direction: row;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+
+.apply_cancel_container .button {
+    margin-right: 0.5rem;
+    width: 5.0rem;
+    background-color: rgb(221, 177, 30);
+}
+
+
+.user_data_change_response_message {
+    align-self: center;
+}
+
+
+.authentication_input_field {
+    margin-bottom: 0.5rem;
+}
+
+
+.all_users_info {
+    margin-top: 0.5rem;
+    align-self: center;
+}
