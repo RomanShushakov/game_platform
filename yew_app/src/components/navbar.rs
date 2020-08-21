@@ -2,13 +2,13 @@ use yew::prelude::*;
 
 use crate::route::Route;
 use yew_router::components::RouterAnchor;
-use crate::types::User;
+use crate::types::AuthorizedUserResponse;
 
 
 #[derive(Properties, Clone)]
 pub struct Props
 {
-    pub user: Option<User>,
+    pub user: Option<AuthorizedUserResponse>,
     pub token: Option<String>
 }
 

@@ -19,11 +19,11 @@ use components::NavBar;
 use pages::{HomePage, SignInUser, RegisterUser, UserInfo};
 use yew_router::prelude::*;
 use route::Route;
-use types::User;
+use types::AuthorizedUserResponse;
 
 
 const KEY: &str = "authorization";
-const TOKEN: &str  = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX25hbWUiOiJrYW5vIiwiZW1haWwiOiJrYW5vQG1rLmNvbSIsImV4cCI6MTU5Nzk0NzczMn0.9WGnNX3gG6MGMgLDKN3cA9uINirDj1ApeG37ArNu25c";
+const TOKEN: &str  = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX25hbWUiOiJrYW5vIiwiZW1haWwiOiJrYW5vQG1rLmNvbSIsImV4cCI6MTU5ODAwNjYyM30.CKPP8gQSnsh6dopnPb_wFGCPIxCFrK_rgauYtem-hVk";
 
 pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
@@ -32,7 +32,7 @@ type FetchCallback<T> = Callback<FetchResponse<T>>;
 struct State
 {
     token: Option<String>,
-    user: Option<User>,
+    user: Option<AuthorizedUserResponse>,
     storage: StorageService
 }
 
@@ -48,7 +48,7 @@ struct Model
 enum Msg
 {
     IdentifyUser,
-    AuthorizedUser(Result<User, Error>),
+    AuthorizedUser(Result<AuthorizedUserResponse, Error>),
     NotAuthorizedUser,
     SaveToken
 }
@@ -64,8 +64,8 @@ impl Model
 
     fn identify_user(&self, token: &str) -> FetchTask
     {
-        let callback: FetchCallback<User> = self.link.callback(
-            move |response: FetchResponse<User>|
+        let callback: FetchCallback<AuthorizedUserResponse> = self.link.callback(
+            move |response: FetchResponse<AuthorizedUserResponse>|
                 {
                     let (meta, Json(user_data)) = response.into_parts();
                     if meta.status.is_success()
@@ -112,7 +112,6 @@ impl Component for Model
                 }
             };
 
-        link.send_message(Msg::IdentifyUser);
 
         Self {
             link,
@@ -127,7 +126,7 @@ impl Component for Model
     {
         match msg
         {
-            Msg::SaveToken => self.save_token(),
+            Msg::SaveToken => { self.save_token(); self.link.send_message(Msg::IdentifyUser); }
             Msg::IdentifyUser =>
                 {
                     if let Some(token) = &self.state.token
