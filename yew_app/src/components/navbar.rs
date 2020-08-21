@@ -15,8 +15,8 @@ pub struct Props
 
 pub struct NavBar
 {
-    props: Props,
     link: ComponentLink<Self>,
+    props: Props
 }
 
 

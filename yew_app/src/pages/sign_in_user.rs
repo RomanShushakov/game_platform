@@ -1,28 +1,23 @@
 use yew::prelude::*;
-use serde::{Serialize, Deserialize};
-use serde_json::json;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
 use yew::format::{Nothing, Json};
 use anyhow::Error;
+
+use crate::types::{AuthorizedUserResponse, UserSignInDataRequest, UserSignInDataResponse};
 
 
 pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 
-#[derive(Serialize, Clone)]
-struct UserSignInDataRequest
+#[derive(Properties, Clone)]
+pub struct Props
 {
-    user_name: String,
-    password: String
-}
-
-
-#[derive(Deserialize, Clone)]
-pub struct UserSignInDataResponse
-{
-    pub access_token: String
+    pub user: Option<AuthorizedUserResponse>,
+    pub token: Option<String>,
+    pub save_token: Callback<String>,
+    pub identify_user: Callback<String>
 }
 
 
@@ -37,6 +32,7 @@ struct State
 pub struct SignInUser
 {
     link: ComponentLink<Self>,
+    props: Props,
     state: State,
     fetch_task: Option<FetchTask>,
     performing_task: bool,
@@ -101,12 +97,16 @@ impl SignInUser
 impl Component for SignInUser
 {
     type Message = Msg;
-    type Properties = ();
+    type Properties = Props;
 
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self
     {
-        Self { link, fetch_task: None, performing_task: false, state: State { user_name: None, password: None, error_message: None }}
+        Self
+        {
+            link, props, fetch_task: None, performing_task: false,
+            state: State { user_name: None, password: None, error_message: None }
+        }
     }
 
 
@@ -137,17 +137,28 @@ impl Component for SignInUser
                 {
                     self.performing_task = false;
                     self.state.error_message = None;
-                    yew::services::ConsoleService::log("Ok");
+                    let user_data = response.ok();
+                    if let Some(user_data) = user_data
+                    {
+                        // self.props.token = Some(user_data.access_token.to_string());
+                        self.props.save_token.emit(user_data.access_token.to_string());
+                        self.props.identify_user.emit(user_data.access_token.to_string());
+                    }
                 },
-            Msg::UnsuccessfulSignIn => { self.state.error_message = Some("Incorrect user name or password.".to_string()) }
+            Msg::UnsuccessfulSignIn =>
+                {
+                    self.performing_task = false;
+                    self.state.error_message = Some("Incorrect user name or password.".to_string());
+                }
         }
         true
     }
 
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender
+    fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        false
+        self.props = props;
+        true
     }
 
 
@@ -158,20 +169,35 @@ impl Component for SignInUser
 
           <main class="main">
             <div class="container">
-                <h3>{ "Sign in" }</h3>
-                <input class="authentication_input_field" placeholder="user name" oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                <input class="authentication_input_field" type="password" placeholder="password" oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
-                <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
+              {
+                if let Some(user) = &self.props.user
                 {
-                    if let Some(name) = &self.state.error_message
-                    {
-                        html! { <h4> { name } </h4> }
-                    }
-                    else
-                    {
-                        html! { }
-                    }
+                  html! { <h3>{ format!("Hello, {}!", user.user_name) }</h3> }
                 }
+                else
+                {
+                  html!
+                  {
+                    <>
+                        <h3>{ "Sign in" }</h3>
+                        <input class="authentication_input_field" placeholder="user name" oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                        <input class="authentication_input_field" type="password" placeholder="password" oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                        <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
+                        {
+                            if let Some(name) = &self.state.error_message
+                            {
+                                html! { <h4> { name } </h4> }
+                            }
+                            else
+                            {
+                                html! { }
+                            }
+                        }
+                    </>
+                  }
+                }
+              }
+
 
                 // const sign_in_response_message = document.createElement("h4");
                 // sign_in_response_message.id = "sign_in_response_message";

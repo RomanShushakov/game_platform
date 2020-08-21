@@ -1,4 +1,4 @@
-#![recursion_limit="256"]
+#![recursion_limit="512"]
 
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
@@ -7,8 +7,6 @@ use yew::services::storage::{Area, StorageService};
 
 use yew::format::{Nothing, Json};
 use anyhow::Error;
-
-// use serde::{Deserialize, Serialize};
 
 mod route;
 mod components;
@@ -23,7 +21,6 @@ use types::AuthorizedUserResponse;
 
 
 const KEY: &str = "authorization";
-const TOKEN: &str  = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX25hbWUiOiJrYW5vIiwiZW1haWwiOiJrYW5vQG1rLmNvbSIsImV4cCI6MTU5ODAwNjYyM30.CKPP8gQSnsh6dopnPb_wFGCPIxCFrK_rgauYtem-hVk";
 
 pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
@@ -36,6 +33,7 @@ struct State
     storage: StorageService
 }
 
+
 struct Model
 {
     link: ComponentLink<Self>,
@@ -47,18 +45,18 @@ struct Model
 
 enum Msg
 {
-    IdentifyUser,
+    SaveToken(String),
+    IdentifyUser(String),
     AuthorizedUser(Result<AuthorizedUserResponse, Error>),
-    NotAuthorizedUser,
-    SaveToken
+    NotAuthorizedUser
 }
 
 
 impl Model
 {
-    fn save_token(&mut self)
+    fn save_token(&mut self, token: &str)
     {
-        self.state.storage.store(KEY, Ok(TOKEN.to_string()));
+        self.state.storage.store(KEY, Ok(token.to_string()));
     }
 
 
@@ -85,7 +83,6 @@ impl Model
             .unwrap();
         FetchService::fetch(request, callback).unwrap()
     }
-
 }
 
 
@@ -97,14 +94,13 @@ impl Component for Model
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self
     {
-        link.send_message(Msg::SaveToken);
-
         let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
         let token =
             {
                 if let Ok(token) = storage.restore(KEY)
                 {
-                    Some(token)
+                    link.send_message(Msg::IdentifyUser(token.clone()));
+                    Some(token.clone())
                 }
                 else
                 {
@@ -126,19 +122,13 @@ impl Component for Model
     {
         match msg
         {
-            Msg::SaveToken => { self.save_token(); self.link.send_message(Msg::IdentifyUser); }
-            Msg::IdentifyUser =>
+            Msg::SaveToken(token) => self.save_token(&token),
+            Msg::IdentifyUser(token) =>
                 {
-                    if let Some(token) = &self.state.token
-                    {
-                        self.performing_task = true;
-                        let task = self.identify_user(token);
-                        self.fetch_task = Some(task);
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                    self.performing_task = true;
+                    let task = self.identify_user(&token);
+                    self.fetch_task = Some(task);
+
                 },
             Msg::AuthorizedUser(response) =>
                 {
@@ -147,7 +137,7 @@ impl Component for Model
                 },
             Msg::NotAuthorizedUser =>
                 {
-                    yew::services::ConsoleService::log("not_authorized");
+                    self.performing_task = false;
                     return false;
                 }
         }
@@ -163,9 +153,18 @@ impl Component for Model
 
     fn view(&self) -> Html
     {
+        let user = self.state.user.clone();
+        let token = self.state.token.clone();
+        let handle_save_token = self.link.callback(|token: String| Msg::SaveToken(token));
+        let handle_identify_user = self.link.callback(|token: String| Msg::IdentifyUser(token));
+
         let render = Router::render(move |switch: Route| match switch
         {
-            Route::SignInUser => html! { <SignInUser /> },
+            Route::SignInUser => html! { <SignInUser
+                                            user=user.clone()
+                                            token=token.clone()
+                                            save_token=handle_save_token.clone()
+                                            identify_user=handle_identify_user.clone() /> },
             Route::RegisterUser => html! { <RegisterUser /> },
             Route::UserInfo => html! { <UserInfo /> },
             Route::HomePage => html! { <HomePage /> },
@@ -174,8 +173,8 @@ impl Component for Model
         html!
         {
             <div>
-                <NavBar user=self.state.user.clone() token=self.state.token.clone()/>
-                <Router<Route, ()> render=render/>
+                <NavBar user=self.state.user.clone() token=self.state.token.clone() />
+                <Router<Route, ()> render=render />
             </div>
         }
     }
