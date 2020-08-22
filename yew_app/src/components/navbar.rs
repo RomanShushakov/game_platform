@@ -52,9 +52,9 @@ impl NavBar
                 html!
                 {
                   <>
-                    <button id="sign_in_sign_out_button" class="button">{ "Sign out" }</button>
+                    <button class="button">{ "Sign out" }</button>
                     <Anchor route=Route::UserInfo>
-                      <button id="user_info_button" class="button">{ user.user_name.to_string() }</button>
+                      <button class="button">{ user.user_name.to_string() }</button>
                     </Anchor>
                   </>
                 }
@@ -66,10 +66,10 @@ impl NavBar
                 {
                   <>
                     <Anchor route=Route::SignInUser>
-                      <button id="sign_in_sign_out_button" class="button">{ "Sign in" }</button>
+                      <button class="button">{ "Sign in" }</button>
                     </Anchor>
                     <Anchor route=Route::RegisterUser>
-                      <button id="register_button" class="button">{ "Register" }</button>
+                      <button class="button">{ "Register" }</button>
                     </Anchor>
                   </>
                 }

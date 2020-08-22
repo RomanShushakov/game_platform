@@ -166,7 +166,6 @@ impl Component for SignInUser
     {
         html!
         {
-
           <main class="main">
             <div class="container">
               {
@@ -180,13 +179,17 @@ impl Component for SignInUser
                   {
                     <>
                         <h3>{ "Sign in" }</h3>
-                        <input class="authentication_input_field" placeholder="user name" oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                        <input class="authentication_input_field" type="password" placeholder="password" oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                        <input
+                            class="authentication_input_field" placeholder="user name"
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                        <input
+                            class="authentication_input_field" type="password" placeholder="password"
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
                         <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
                         {
-                            if let Some(name) = &self.state.error_message
+                            if let Some(message) = &self.state.error_message
                             {
-                                html! { <h4> { name } </h4> }
+                                html! { <h4> { message } </h4> }
                             }
                             else
                             {
@@ -197,36 +200,7 @@ impl Component for SignInUser
                   }
                 }
               }
-
-
-                // const sign_in_response_message = document.createElement("h4");
-                // sign_in_response_message.id = "sign_in_response_message";
-                // reloading_data.appendChild(sign_in_response_message);
-                //
-                //
-                // <h2>{ "SignInUser" }</h2>
-                // {
-                //     if let Some(name) = &self.user_name
-                //     {
-                //         html! { <p> { name } </p> }
-                //     }
-                //     else
-                //     {
-                //         html! { }
-                //     }
-                // }
-                // {
-                //     if let Some(password) = &self.password
-                //     {
-                //         html! { <p> { password } </p> }
-                //     }
-                //     else
-                //     {
-                //         html! { }
-                //     }
-                // }
-
-              </div>
+            </div>
           </main>
         }
     }
