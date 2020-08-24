@@ -67,10 +67,19 @@ pub struct Claims
     }
 
 
+// #[derive(Serialize)]
+// pub struct AuthorizedUserResponse
+// {
+//     pub user_name: String,
+// }
+
+
 #[derive(Serialize)]
 pub struct AuthorizedUserResponse
 {
     pub user_name: String,
+    pub email: String,
+    pub is_superuser: bool
 }
 
 

@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
-use crate::route::Route;
+use crate::route::AppRoute;
 use yew_router::components::RouterAnchor;
 
 use yew::format::{Nothing, Json};
@@ -9,6 +9,7 @@ use anyhow::Error;
 
 use crate::types::UserRegisterData;
 
+use validator;
 
 // pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 // type FetchCallback<T> = Callback<FetchResponse<T>>;
@@ -56,7 +57,9 @@ impl RegisterUser
                 {
                     if !password.is_empty() && !email.is_empty() && !user_name.is_empty()
                     {
-                        return Some(UserRegisterData { user_name: user_name.to_string(), email: email.to_string(), password: password.to_string() })
+                        return Some(UserRegisterData {
+                            user_name: user_name.to_string(), email: email.to_string(), password: password.to_string()
+                        })
                     }
                 }
             }
@@ -122,7 +125,14 @@ impl Component for RegisterUser
                 {
                     if let Some(register_data) = self.check_input_fields()
                     {
-                        self.link.send_message(Msg::RegisterUser(register_data));
+                        if validator::validate_email(&register_data.email)
+                        {
+                            self.link.send_message(Msg::RegisterUser(register_data));
+                        }
+                        else
+                        {
+                            yew::services::dialog::DialogService::alert("You have entered an invalid email address.");
+                        }
                     }
                     else
                     {
@@ -156,7 +166,7 @@ impl Component for RegisterUser
 
     fn view(&self) -> Html
     {
-        type Anchor = RouterAnchor<Route>;
+        type Anchor = RouterAnchor<AppRoute>;
 
         html!
         {
@@ -169,7 +179,7 @@ impl Component for RegisterUser
                     {
                       <>
                         <h3>{ message }</h3>
-                        <Anchor route=Route::SignInUser>
+                        <Anchor route=AppRoute::SignInUser>
                           <button class="button">{ "Sign in" }</button>
                         </Anchor>
                       </>
@@ -205,8 +215,6 @@ impl Component for RegisterUser
                     }
                 }
               }
-
-
             </div>
           </main>
         }

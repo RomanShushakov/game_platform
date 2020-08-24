@@ -1,7 +1,7 @@
 use yew::prelude::*;
+use yew_router::prelude::*;
 
-use crate::route::Route;
-use yew_router::components::RouterAnchor;
+use crate::route::AppRoute;
 use crate::types::AuthorizedUserResponse;
 
 
@@ -9,7 +9,8 @@ use crate::types::AuthorizedUserResponse;
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
-    pub token: Option<String>
+    pub token: Option<String>,
+    pub sign_out: Callback<()>,
 }
 
 
@@ -17,6 +18,12 @@ pub struct NavBar
 {
     link: ComponentLink<Self>,
     props: Props
+}
+
+
+pub enum Msg
+{
+    SignOut
 }
 
 
@@ -40,37 +47,40 @@ impl NavBar
         }
     }
 
+
     fn view_auth_buttons(&self) -> Html
     {
-        type Anchor = RouterAnchor<Route>;
+        // type Anchor = RouterAnchor<AppRoute>;
+        type Button = RouterButton<AppRoute>;
 
         html!
         {
-
             if let Some(user) = &self.props.user
             {
                 html!
                 {
                   <>
-                    <button class="button">{ "Sign out" }</button>
-                    <Anchor route=Route::UserInfo>
-                      <button class="button">{ user.user_name.to_string() }</button>
-                    </Anchor>
+                    // <Anchor route=AppRoute::HomePage>
+                    //   <button class="button" onclick=self.link.callback(|_| Msg::SignOut)>{ "Sign out" }</button>
+                    // </Anchor>
+                    <a href="/" class="anchor_button" onclick=self.link.callback(|_| Msg::SignOut)>{ "Sign out" }</a>
+                    <Button route=AppRoute::UserInfo classes="button">
+                      { user.user_name.to_string() }
+                    </Button>
                   </>
                 }
-
             }
             else
             {
                 html!
                 {
                   <>
-                    <Anchor route=Route::SignInUser>
-                      <button class="button">{ "Sign in" }</button>
-                    </Anchor>
-                    <Anchor route=Route::RegisterUser>
-                      <button class="button">{ "Register" }</button>
-                    </Anchor>
+                    <Button route=AppRoute::SignInUser classes="button">
+                      { "Sign in" }
+                    </Button>
+                    <Button route=AppRoute::RegisterUser classes="button">
+                      { "Register" }
+                    </Button>
                   </>
                 }
 
@@ -83,7 +93,7 @@ impl NavBar
 
 impl Component for NavBar
 {
-    type Message = ();
+    type Message = Msg;
     type Properties = Props;
 
 
@@ -93,8 +103,15 @@ impl Component for NavBar
     }
 
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender
+    fn update(&mut self, msg: Self::Message) -> ShouldRender
     {
+        match msg
+        {
+            Msg::SignOut =>
+                {
+                    self.props.sign_out.emit(());
+                }
+        }
         true
     }
 
@@ -108,7 +125,7 @@ impl Component for NavBar
 
     fn view(&self) -> Html
     {
-        type Anchor = RouterAnchor<Route>;
+        type Anchor = RouterAnchor<AppRoute>;
 
         html!
         {
@@ -122,7 +139,7 @@ impl Component for NavBar
                   <nav class="header_navigation">
                     <ul class="header_list">
                       <li class="header_list_item">
-                        <Anchor route=Route::HomePage>{ "Home" }</Anchor>
+                        <Anchor route=AppRoute::HomePage>{ "Home" }</Anchor>
                       </li>
                       <li class="header_list_item">
                         <a href="#">{ "Checkers" }</a>
@@ -135,7 +152,6 @@ impl Component for NavBar
                   </div>
                 </div>
             </header>
-
         }
     }
 }

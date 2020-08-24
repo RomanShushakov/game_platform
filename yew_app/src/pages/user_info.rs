@@ -1,34 +1,299 @@
 use yew::prelude::*;
+use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::format::{Nothing, Json};
+use anyhow::Error;
+
+use validator;
+
+use crate::types::{AuthorizedUserResponse, UserUpdateDataRequest};
+use crate::KEY;
+
+#[derive(Properties, Clone)]
+pub struct Props
+{
+    pub user: Option<AuthorizedUserResponse>,
+    pub token: Option<String>
+}
 
 
-pub struct UserInfo;
+struct State
+{
+    edited_user_name: Option<String>,
+    edited_email: Option<String>,
+    edited_password: Option<String>,
+    edited_retyped_password: Option<String>
+}
+
+
+impl Default for State
+{
+    fn default() -> Self
+        {
+            Self
+            {
+                edited_user_name: None,
+                edited_email: None,
+                edited_password: None,
+                edited_retyped_password: None
+            }
+        }
+}
+
+
+pub struct UserInfo
+{
+    link: ComponentLink<Self>,
+    props: Props,
+    state: State,
+    fetch_task: Option<FetchTask>,
+    performing_task: bool
+}
+
+
+pub enum Msg
+{
+    UpdateEditUserName(String),
+    UpdateEditEmail(String),
+    UpdateEditPassword(String),
+    UpdateEditRetypePassword(String),
+    Save,
+    UpdateUser(UserUpdateDataRequest),
+    SuccessfulUpdate(Result<String, Error>),
+    UnsuccessfulUpdate(Result<String, Error>)
+}
+
+
+impl UserInfo
+{
+    fn compose_updated_user_data(&self) -> Option<UserUpdateDataRequest>
+    {
+        let updated_user_name: Option<String> = match &self.state.edited_user_name
+        {
+            Some(user_name) =>
+                {
+                    if !user_name.is_empty()
+                    {
+                        Some(user_name.to_string())
+                    }
+                    else { None }
+                }
+            None => None
+        };
+
+        let updated_email: Option<String> = match &self.state.edited_email
+        {
+            Some(email) =>
+                {
+                    if !email.is_empty()
+                    {
+                        Some(email.to_string())
+                    }
+                    else { None }
+                }
+            None => None
+        };
+
+        let updated_password: Option<String> = match &self.state.edited_password
+        {
+            Some(password) =>
+                {
+                    if !password.is_empty()
+                    {
+                        Some(password.to_string())
+                    }
+                    else { None }
+                }
+            None => None
+        };
+
+        let updated_retyped_password: Option<String> = match &self.state.edited_retyped_password
+        {
+            Some(password) =>
+                {
+                    if !password.is_empty()
+                    {
+                        Some(password.to_string())
+                    }
+                    else { None }
+                }
+            None => None
+        };
+
+        if let Some(email) = &updated_email
+        {
+            if !validator::validate_email(email)
+            {
+                yew::services::dialog::DialogService::alert("You have entered an invalid email address.");
+                return None
+            }
+        }
+
+        if let Some(password) = &updated_password
+        {
+            if let Some(retyped_password) = &updated_retyped_password
+            {
+                if password != retyped_password
+                {
+                    yew::services::dialog::DialogService::alert("Password doesn't match!");
+                    return None
+                }
+            }
+            else
+            {
+                yew::services::dialog::DialogService::alert("Password doesn't match!");
+                return None
+            }
+        }
+
+        if let Some(_) = &updated_retyped_password
+        {
+            if let None = &updated_password
+            {
+                yew::services::dialog::DialogService::alert("Password doesn't match!");
+                return None
+            }
+        }
+
+        Some(UserUpdateDataRequest
+        {
+            edited_user_name: updated_user_name, edited_email: updated_email, edited_password: updated_password
+        })
+    }
+
+
+    fn update_user(&self, updated_user_data: UserUpdateDataRequest, token: &str) -> FetchTask
+    {
+        let callback = self.link.callback(
+            move |response: Response<Result<String, Error>>|
+                {
+                    let (meta, message) = response.into_parts();
+                    if meta.status.is_success()
+                    {
+                        Msg::SuccessfulUpdate(message)
+                    }
+                    else
+                    {
+                        Msg::UnsuccessfulUpdate(message)
+                    }
+                },
+            );
+
+        let request = Request::post("/auth/update_user")
+            .header("Content-Type", "application/json" )
+            .header(KEY, token )
+            .body(Json(&updated_user_data))
+            .unwrap();
+        FetchService::fetch(request, callback).unwrap()
+    }
+}
 
 
 impl Component for UserInfo
 {
-    type Message = ();
-    type Properties = ();
+    type Message = Msg;
+    type Properties = Props;
 
-    fn create(_: Self::Properties, _link: ComponentLink<Self>) -> Self
+
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self
     {
-        Self {  }
+        Self
+        {
+            props, link, state: State::default(),
+            performing_task: false, fetch_task: None
+        }
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender
+
+    fn update(&mut self, msg: Self::Message) -> ShouldRender
     {
+        match msg
+        {
+            Msg::UpdateEditUserName(e) => self.state.edited_user_name = Some(e),
+            Msg::UpdateEditEmail(e) => self.state.edited_email = Some(e),
+            Msg::UpdateEditPassword(e) => self.state.edited_password = Some(e),
+            Msg::UpdateEditRetypePassword(e) => self.state.edited_retyped_password = Some(e),
+            Msg::Save =>
+                {
+                    if let Some(updated_user_data) = self.compose_updated_user_data()
+                    {
+                        self.link.send_message(Msg::UpdateUser(updated_user_data));
+                    }
+                },
+            Msg::UpdateUser(updated_user_data) =>
+                {
+                    if let Some(token) = &self.props.token
+                    {
+                        self.performing_task = true;
+                        let task = self.update_user(updated_user_data, token);
+                        self.fetch_task = Some(task);
+                    }
+                    else { yew::services::ConsoleService::log("Nok") }
+
+                },
+            Msg::SuccessfulUpdate(message) => yew::services::ConsoleService::log(&message.unwrap()),
+            Msg::UnsuccessfulUpdate(message) => yew::services::ConsoleService::log(&message.unwrap()),
+        }
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender
+
+    fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        false
+        self.props = props;
+        true
     }
+
 
     fn view(&self) -> Html
     {
         html!
         {
-            <h2>{ "UserInfo" }</h2>
+            <main class="main">
+              <div class="container">
+                {
+                    if let Some(user) = &self.props.user
+                    {
+                        html!
+                        {
+                            <>
+                                <h3>{ "Edit profile." } </h3>
+                                <div>
+                                  <p>{ "User name:" }</p>
+                                  <input
+                                        placeholder={ &user.user_name }
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                                </div>
+
+                                <div>
+                                  <p>{ "Email:" }</p>
+                                  <input
+                                        placeholder={ &user.email }
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
+                                </div>
+
+                                <div>
+                                  <p>{ "Password:" }</p>
+                                  <input
+                                        type="password" placeholder="enter new password"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                                  <input
+                                        type="password" placeholder="retype new password"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditRetypePassword(e.value)) />
+                                </div>
+
+                                <div class="apply_cancel_container">
+                                  <button class="button" onclick=self.link.callback(|_| Msg::Save)>{ "Save" }</button>
+                                </div>
+                            </>
+                        }
+                    }
+                    else
+                    {
+                        html! { <h3>{ "Undefined user." } </h3> }
+                    }
+                }
+              </div>
+          </main>
         }
     }
 }

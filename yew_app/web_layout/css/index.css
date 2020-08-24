@@ -74,6 +74,16 @@ h3 {
 }
 
 
+.anchor_button {
+    font: 1rem;
+    background-color: #31BDC6;
+    color: black;
+    padding: 0.25rem 0.5rem 0.25rem 0.5rem;
+    border: 1.0px;
+    border-radius: 7.5px;
+}
+
+
 .main .container {
     display: flex;
     align-items: center;

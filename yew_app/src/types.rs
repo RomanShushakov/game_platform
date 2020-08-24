@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Clone)]
 pub struct AuthorizedUserResponse
 {
-    pub user_name: String
+    pub user_name: String,
+    pub email: String,
+    pub is_superuser: bool
 }
 
 
@@ -29,4 +31,13 @@ pub struct UserRegisterData
     pub user_name: String,
     pub email: String,
     pub password: String
+}
+
+
+#[derive(Serialize)]
+pub struct UserUpdateDataRequest
+{
+    pub edited_user_name: Option<String>,
+    pub edited_email: Option<String>,
+    pub edited_password: Option<String>
 }

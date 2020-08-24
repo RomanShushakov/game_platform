@@ -13,7 +13,6 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, TokenData};
 
 use askama::Template;
-use crate::models::User;
 use crate::database::MyError;
 
 mod models;
@@ -126,7 +125,16 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest)
                     let verified_user = verify_user(user_data, &pool).await;
                     match verified_user
                     {
-                        Ok(Some(user)) => Ok(Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse { user_name: user.user_name, }))),
+
+                        // Ok(Some(user)) => Ok(Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse { user_name: user.user_name } )) ),
+
+                        Ok(Some(user)) => Ok(Ok(HttpResponse::Ok().json(models::AuthorizedUserResponse
+                            {
+                                user_name: user.user_name,
+                                email: user.email, is_superuser: user.is_superuser
+                            }))
+                        ),
+
                         Ok(None) => Ok(Err(database::MyError::Unauthorized { message: "Something go wrong.".to_string() })),
                         Err(e) => Err(e)
                     }
@@ -246,7 +254,7 @@ async fn extract_users_data(pool: &web::Data<DbPool>) -> Result<Option<Vec<model
 
 async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, Error>
 {
-    let undefined_user = User::default();
+    let undefined_user = models::User::default();
     let users = vec![undefined_user];
     let undefined_users = templates::AllUsers { users }.render().unwrap();
     let undefined_users_response = Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users));

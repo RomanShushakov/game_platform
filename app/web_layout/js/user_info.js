@@ -98,7 +98,6 @@ sign_in_sign_out_button.addEventListener("click", function () {
 // *** sign out end
 
 
-
 // *** user data editing start
 function edit_name() {
     activate_apply_changes_button();

@@ -2,7 +2,7 @@ use yew_router::prelude::*;
 
 
 #[derive(Switch, Debug, Clone)]
-pub enum Route
+pub enum AppRoute
 {
     #[to = "/#auth/sign_in_user"]
     SignInUser,

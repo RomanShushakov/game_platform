@@ -8,6 +8,8 @@ use yew::services::storage::{Area, StorageService};
 use yew::format::{Nothing, Json};
 use anyhow::Error;
 
+use yew_router::prelude::*;
+
 mod route;
 mod components;
 mod pages;
@@ -15,12 +17,11 @@ mod types;
 
 use components::NavBar;
 use pages::{HomePage, SignInUser, RegisterUser, UserInfo};
-use yew_router::prelude::*;
-use route::Route;
+use route::AppRoute;
 use types::AuthorizedUserResponse;
 
 
-const KEY: &str = "authorization";
+pub const KEY: &str = "authorization";
 
 pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
@@ -39,13 +40,14 @@ struct Model
     link: ComponentLink<Self>,
     state: State,
     fetch_task: Option<FetchTask>,
-    performing_task: bool
+    performing_task: bool,
 }
 
 
 enum Msg
 {
     SaveToken(String),
+    SignOut,
     IdentifyUser(String),
     AuthorizedUser(Result<AuthorizedUserResponse, Error>),
     NotAuthorizedUser
@@ -57,6 +59,13 @@ impl Model
     fn save_token(&mut self, token: &str)
     {
         self.state.storage.store(KEY, Ok(token.to_string()));
+    }
+
+
+    fn sign_out(&mut self)
+    {
+        self.state.storage.remove(KEY);
+        self.state.user = None;
     }
 
 
@@ -108,12 +117,12 @@ impl Component for Model
                 }
             };
 
-
-        Self {
+        Self
+        {
             link,
             state: State { storage, token, user: None },
             performing_task: false,
-            fetch_task: None,
+            fetch_task: None
         }
     }
 
@@ -123,12 +132,12 @@ impl Component for Model
         match msg
         {
             Msg::SaveToken(token) => self.save_token(&token),
+            Msg::SignOut => self.sign_out(),
             Msg::IdentifyUser(token) =>
                 {
                     self.performing_task = true;
                     let task = self.identify_user(&token);
                     self.fetch_task = Some(task);
-
                 },
             Msg::AuthorizedUser(response) =>
                 {
@@ -158,23 +167,25 @@ impl Component for Model
         let handle_save_token = self.link.callback(|token: String| Msg::SaveToken(token));
         let handle_identify_user = self.link.callback(|token: String| Msg::IdentifyUser(token));
 
-        let render = Router::render(move |switch: Route| match switch
+        let handle_sign_out = self.link.callback(|_| Msg::SignOut);
+
+        let render = Router::render(move |switch: AppRoute| match switch
         {
-            Route::SignInUser => html! { <SignInUser
+            AppRoute::SignInUser => html! { <SignInUser
                                             user=user.clone()
                                             token=token.clone()
                                             save_token=handle_save_token.clone()
                                             identify_user=handle_identify_user.clone() /> },
-            Route::RegisterUser => html! { <RegisterUser /> },
-            Route::UserInfo => html! { <UserInfo /> },
-            Route::HomePage => html! { <HomePage /> },
+            AppRoute::RegisterUser => html! { <RegisterUser /> },
+            AppRoute::UserInfo => html! { <UserInfo user=user.clone(), token=token.clone() /> },
+            AppRoute::HomePage => html! { <HomePage /> },
         });
 
         html!
         {
             <div>
-                <NavBar user=self.state.user.clone() token=self.state.token.clone() />
-                <Router<Route, ()> render=render />
+                <NavBar user=self.state.user.clone() token=self.state.token.clone() sign_out=handle_sign_out.clone() />
+                <Router<AppRoute, ()> render=render />
             </div>
         }
     }
