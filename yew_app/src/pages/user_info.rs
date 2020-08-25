@@ -8,11 +8,15 @@ use validator;
 use crate::types::{AuthorizedUserResponse, UserUpdateDataRequest};
 use crate::KEY;
 
+use crate::pages::AllUsers;
+
+
 #[derive(Properties, Clone)]
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
-    pub token: Option<String>
+    pub token: Option<String>,
+    pub sign_out: Callback<()>,
 }
 
 
@@ -21,7 +25,9 @@ struct State
     edited_user_name: Option<String>,
     edited_email: Option<String>,
     edited_password: Option<String>,
-    edited_retyped_password: Option<String>
+    edited_retyped_password: Option<String>,
+    error_message: Option<String>,
+    data_update_success_message: Option<String>
 }
 
 
@@ -34,7 +40,9 @@ impl Default for State
                 edited_user_name: None,
                 edited_email: None,
                 edited_password: None,
-                edited_retyped_password: None
+                edited_retyped_password: None,
+                error_message: None,
+                data_update_success_message: None,
             }
         }
 }
@@ -46,7 +54,6 @@ pub struct UserInfo
     props: Props,
     state: State,
     fetch_task: Option<FetchTask>,
-    performing_task: bool
 }
 
 
@@ -154,10 +161,14 @@ impl UserInfo
             }
         }
 
-        Some(UserUpdateDataRequest
+        if updated_user_name.is_some() || updated_email.is_some() || updated_password.is_some()
         {
-            edited_user_name: updated_user_name, edited_email: updated_email, edited_password: updated_password
-        })
+            Some(UserUpdateDataRequest
+            {
+                edited_user_name: updated_user_name, edited_email: updated_email, edited_password: updated_password
+            })
+        }
+        else { None }
     }
 
 
@@ -199,7 +210,7 @@ impl Component for UserInfo
         Self
         {
             props, link, state: State::default(),
-            performing_task: false, fetch_task: None
+            fetch_task: None
         }
     }
 
@@ -208,9 +219,18 @@ impl Component for UserInfo
     {
         match msg
         {
-            Msg::UpdateEditUserName(e) => self.state.edited_user_name = Some(e),
-            Msg::UpdateEditEmail(e) => self.state.edited_email = Some(e),
-            Msg::UpdateEditPassword(e) => self.state.edited_password = Some(e),
+            Msg::UpdateEditUserName(e) =>
+                {
+                    self.state.edited_user_name = Some(e);
+                },
+            Msg::UpdateEditEmail(e) =>
+                {
+                    self.state.edited_email = Some(e);
+                },
+            Msg::UpdateEditPassword(e) =>
+                {
+                    self.state.edited_password = Some(e);
+                },
             Msg::UpdateEditRetypePassword(e) => self.state.edited_retyped_password = Some(e),
             Msg::Save =>
                 {
@@ -218,20 +238,23 @@ impl Component for UserInfo
                     {
                         self.link.send_message(Msg::UpdateUser(updated_user_data));
                     }
+                    else { return false }
                 },
             Msg::UpdateUser(updated_user_data) =>
                 {
                     if let Some(token) = &self.props.token
                     {
-                        self.performing_task = true;
                         let task = self.update_user(updated_user_data, token);
                         self.fetch_task = Some(task);
                     }
-                    else { yew::services::ConsoleService::log("Nok") }
-
+                    else { return false }
                 },
-            Msg::SuccessfulUpdate(message) => yew::services::ConsoleService::log(&message.unwrap()),
-            Msg::UnsuccessfulUpdate(message) => yew::services::ConsoleService::log(&message.unwrap()),
+            Msg::SuccessfulUpdate(message) =>
+                {
+                    self.state.data_update_success_message = Some(message.unwrap());
+                    self.props.sign_out.emit(());
+                },
+            Msg::UnsuccessfulUpdate(message) => self.state.error_message = Some(message.unwrap()),
         }
         true
     }
@@ -251,45 +274,75 @@ impl Component for UserInfo
             <main class="main">
               <div class="container">
                 {
-                    if let Some(user) = &self.props.user
+                    if let Some(success_message) = &self.state.data_update_success_message
                     {
-                        html!
-                        {
-                            <>
-                                <h3>{ "Edit profile." } </h3>
-                                <div>
-                                  <p>{ "User name:" }</p>
-                                  <input
-                                        placeholder={ &user.user_name }
-                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                                </div>
-
-                                <div>
-                                  <p>{ "Email:" }</p>
-                                  <input
-                                        placeholder={ &user.email }
-                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
-                                </div>
-
-                                <div>
-                                  <p>{ "Password:" }</p>
-                                  <input
-                                        type="password" placeholder="enter new password"
-                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
-                                  <input
-                                        type="password" placeholder="retype new password"
-                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditRetypePassword(e.value)) />
-                                </div>
-
-                                <div class="apply_cancel_container">
-                                  <button class="button" onclick=self.link.callback(|_| Msg::Save)>{ "Save" }</button>
-                                </div>
-                            </>
-                        }
+                        html! { <h4>{ success_message }</h4> }
                     }
                     else
                     {
-                        html! { <h3>{ "Undefined user." } </h3> }
+                        {
+                            if let Some(user) = &self.props.user
+                            {
+                                html!
+                                {
+                                    <>
+                                        <h3>{ "Edit profile." } </h3>
+                                        <div>
+                                          <p>{ "User name:" }</p>
+                                          <input
+                                                placeholder={ &user.user_name }
+                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                                        </div>
+
+                                        <div>
+                                          <p>{ "Email:" }</p>
+                                          <input
+                                                placeholder={ &user.email }
+                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
+                                        </div>
+
+                                        <div>
+                                          <p>{ "Password:" }</p>
+                                          <input
+                                                type="password" placeholder="enter new password"
+                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                                          <input
+                                                type="password" placeholder="retype new password"
+                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditRetypePassword(e.value)) />
+                                        </div>
+
+                                        <div class="apply_cancel_container">
+                                          <button class="button" onclick=self.link.callback(|_| Msg::Save)>{ "Save" }</button>
+                                        </div>
+                                        {
+                                            if let Some(error_message) = &self.state.error_message
+                                            {
+                                                html! { <h4>{ error_message }</h4> }
+                                            }
+                                            else
+                                            {
+                                                html! {  }
+                                            }
+                                        }
+
+                                        {
+                                            if user.is_superuser
+                                            {
+                                                html! { <AllUsers /> }
+                                            }
+                                            else
+                                            {
+                                                html! {  }
+                                            }
+                                        }
+                                    </>
+                                }
+                            }
+                            else
+                            {
+                                html! { <h3>{ "Undefined user." } </h3> }
+                            }
+                        }
                     }
                 }
               </div>

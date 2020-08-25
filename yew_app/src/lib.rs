@@ -1,4 +1,4 @@
-#![recursion_limit="512"]
+#![recursion_limit="1024"]
 
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
@@ -40,7 +40,6 @@ struct Model
     link: ComponentLink<Self>,
     state: State,
     fetch_task: Option<FetchTask>,
-    performing_task: bool,
 }
 
 
@@ -58,6 +57,7 @@ impl Model
 {
     fn save_token(&mut self, token: &str)
     {
+        self.state.token = Some(token.to_string());
         self.state.storage.store(KEY, Ok(token.to_string()));
     }
 
@@ -121,7 +121,6 @@ impl Component for Model
         {
             link,
             state: State { storage, token, user: None },
-            performing_task: false,
             fetch_task: None
         }
     }
@@ -135,18 +134,15 @@ impl Component for Model
             Msg::SignOut => self.sign_out(),
             Msg::IdentifyUser(token) =>
                 {
-                    self.performing_task = true;
                     let task = self.identify_user(&token);
                     self.fetch_task = Some(task);
                 },
             Msg::AuthorizedUser(response) =>
                 {
-                    self.performing_task = false;
                     self.state.user = response.ok();
                 },
             Msg::NotAuthorizedUser =>
                 {
-                    self.performing_task = false;
                     return false;
                 }
         }
@@ -173,18 +169,19 @@ impl Component for Model
         {
             AppRoute::SignInUser => html! { <SignInUser
                                             user=user.clone()
-                                            token=token.clone()
                                             save_token=handle_save_token.clone()
                                             identify_user=handle_identify_user.clone() /> },
             AppRoute::RegisterUser => html! { <RegisterUser /> },
-            AppRoute::UserInfo => html! { <UserInfo user=user.clone(), token=token.clone() /> },
+            AppRoute::UserInfo => html! { <UserInfo user=user.clone(), token=token.clone(), sign_out=handle_sign_out.clone() /> },
             AppRoute::HomePage => html! { <HomePage /> },
         });
+
+        let handle_sign_out = self.link.callback(|_| Msg::SignOut);
 
         html!
         {
             <div>
-                <NavBar user=self.state.user.clone() token=self.state.token.clone() sign_out=handle_sign_out.clone() />
+                <NavBar user=self.state.user.clone(), token=self.state.token.clone(), sign_out=handle_sign_out.clone() />
                 <Router<AppRoute, ()> render=render />
             </div>
         }

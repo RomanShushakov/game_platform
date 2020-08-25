@@ -30,7 +30,6 @@ pub struct RegisterUser
     link: ComponentLink<Self>,
     state: State,
     fetch_task: Option<FetchTask>,
-    performing_task: bool,
 }
 
 
@@ -104,7 +103,7 @@ impl Component for RegisterUser
     {
         Self
         {
-            link, fetch_task: None, performing_task: false,
+            link, fetch_task: None,
             state: State
                 {
                     user_name: None, email: None, password: None,
@@ -141,7 +140,6 @@ impl Component for RegisterUser
                 },
             Msg::RegisterUser(register_data) =>
                 {
-                    self.performing_task = true;
                     let task = self.register_user(register_data);
                     self.fetch_task = Some(task);
                 },

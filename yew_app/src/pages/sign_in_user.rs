@@ -15,7 +15,6 @@ type FetchCallback<T> = Callback<FetchResponse<T>>;
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
-    pub token: Option<String>,
     pub save_token: Callback<String>,
     pub identify_user: Callback<String>
 }
@@ -35,7 +34,6 @@ pub struct SignInUser
     props: Props,
     state: State,
     fetch_task: Option<FetchTask>,
-    performing_task: bool,
 }
 
 
@@ -104,7 +102,7 @@ impl Component for SignInUser
     {
         Self
         {
-            link, props, fetch_task: None, performing_task: false,
+            link, props, fetch_task: None,
             state: State { user_name: None, password: None, error_message: None }
         }
     }
@@ -129,25 +127,21 @@ impl Component for SignInUser
                 },
             Msg::SignInUser(sign_in_data) =>
                 {
-                    self.performing_task = true;
                     let task = self.sign_in_user(sign_in_data);
                     self.fetch_task = Some(task);
                 },
             Msg::SuccessfulSignIn(response) =>
                 {
-                    self.performing_task = false;
                     self.state.error_message = None;
                     let user_data = response.ok();
                     if let Some(user_data) = user_data
                     {
-                        // self.props.token = Some(user_data.access_token.to_string());
                         self.props.save_token.emit(user_data.access_token.to_string());
                         self.props.identify_user.emit(user_data.access_token.to_string());
                     }
                 },
             Msg::UnsuccessfulSignIn =>
                 {
-                    self.performing_task = false;
                     self.state.error_message = Some("Incorrect user name or password.".to_string());
                 }
         }
