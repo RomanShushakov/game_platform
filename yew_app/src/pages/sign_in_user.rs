@@ -160,42 +160,42 @@ impl Component for SignInUser
     {
         html!
         {
-          <main class="main">
+            <main class="main">
             <div class="container">
-              {
-                if let Some(user) = &self.props.user
                 {
-                  html! { <h3>{ format!("Hello, {}!", user.user_name) }</h3> }
-                }
-                else
-                {
-                  html!
-                  {
-                    <>
-                        <h3>{ "Sign in" }</h3>
-                        <input
-                            class="authentication_input_field" placeholder="user name"
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                        <input
-                            class="authentication_input_field" type="password" placeholder="password"
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
-                        <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
+                    if let Some(user) = &self.props.user
+                    {
+                        html! { <h3>{ format!("Hello, {}!", user.user_name) }</h3> }
+                    }
+                    else
+                    {
+                        html!
                         {
-                            if let Some(message) = &self.state.error_message
-                            {
-                                html! { <h4> { message } </h4> }
-                            }
-                            else
-                            {
-                                html! { }
-                            }
+                            <>
+                                <h3>{ "Sign in" }</h3>
+                                <input
+                                    class="authentication_input_field" placeholder="user name"
+                                    oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                                <input
+                                    class="authentication_input_field" type="password" placeholder="password"
+                                    oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                                <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
+                                {
+                                    if let Some(message) = &self.state.error_message
+                                    {
+                                        html! { <h4> { message } </h4> }
+                                    }
+                                    else
+                                    {
+                                        html! { }
+                                    }
+                                }
+                            </>
                         }
-                    </>
-                  }
+                    }
                 }
-              }
             </div>
-          </main>
+            </main>
         }
     }
 }

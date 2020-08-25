@@ -168,53 +168,53 @@ impl Component for RegisterUser
 
         html!
         {
-          <main class="main">
-            <div class="container">
-              {
-                if let Some(message) = &self.state.registration_success_message
-                {
-                    html!
+            <main class="main">
+                <div class="container">
                     {
-                      <>
-                        <h3>{ message }</h3>
-                        <Anchor route=AppRoute::SignInUser>
-                          <button class="button">{ "Sign in" }</button>
-                        </Anchor>
-                      </>
+                        if let Some(message) = &self.state.registration_success_message
+                        {
+                            html!
+                            {
+                                <>
+                                <h3>{ message }</h3>
+                                <Anchor route=AppRoute::SignInUser>
+                                    <button class="button">{ "Sign in" }</button>
+                                </Anchor>
+                                </>
+                            }
+                        }
+                        else
+                        {
+                            html!
+                            {
+                                <>
+                                    <h3>{ "Register" }</h3>
+                                    <input
+                                        class="authentication_input_field" placeholder="user name"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                                    <input
+                                        class="authentication_input_field" placeholder="email"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
+                                    <input
+                                        class="authentication_input_field" type="password" placeholder="password"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                                    <button class="button" onclick=self.link.callback(|_| Msg::Submit)>{ "Submit" }</button>
+                                    {
+                                        if let Some(message) = &self.state.registration_error_message
+                                        {
+                                            html! { <h4> { message } </h4> }
+                                        }
+                                        else
+                                        {
+                                            html! { }
+                                        }
+                                    }
+                                </>
+                            }
+                        }
                     }
-                }
-                else
-                {
-                    html!
-                    {
-                      <>
-                          <h3>{ "Register" }</h3>
-                          <input
-                                class="authentication_input_field" placeholder="user name"
-                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                          <input
-                                class="authentication_input_field" placeholder="email"
-                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
-                          <input
-                                class="authentication_input_field" type="password" placeholder="password"
-                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
-                          <button class="button" onclick=self.link.callback(|_| Msg::Submit)>{ "Submit" }</button>
-                          {
-                              if let Some(message) = &self.state.registration_error_message
-                              {
-                                  html! { <h4> { message } </h4> }
-                              }
-                              else
-                              {
-                                  html! { }
-                              }
-                          }
-                      </>
-                    }
-                }
-              }
-            </div>
-          </main>
+                </div>
+            </main>
         }
     }
 }

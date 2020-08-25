@@ -41,3 +41,15 @@ pub struct UserUpdateDataRequest
     pub edited_email: Option<String>,
     pub edited_password: Option<String>
 }
+
+
+#[derive(Deserialize)]
+pub struct User
+{
+    pub id: String,
+    pub user_name: String,
+    pub email: String,
+    pub password: String,
+    pub is_superuser: bool,
+    pub is_active: bool
+}

@@ -272,81 +272,86 @@ impl Component for UserInfo
         html!
         {
             <main class="main">
-              <div class="container">
-                {
-                    if let Some(success_message) = &self.state.data_update_success_message
+                <div class="container">
                     {
-                        html! { <h4>{ success_message }</h4> }
-                    }
-                    else
-                    {
+                        if let Some(success_message) = &self.state.data_update_success_message
                         {
-                            if let Some(user) = &self.props.user
+                            html! { <h4>{ success_message }</h4> }
+                        }
+                        else
+                        {
                             {
-                                html!
+                                if let Some(user) = &self.props.user
                                 {
-                                    <>
-                                        <h3>{ "Edit profile." } </h3>
-                                        <div>
-                                          <p>{ "User name:" }</p>
-                                          <input
-                                                placeholder={ &user.user_name }
-                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                                        </div>
+                                    html!
+                                    {
+                                        <>
+                                            <div class="user_info_container">
+                                                <h3>{ "Edit profile." } </h3>
 
-                                        <div>
-                                          <p>{ "Email:" }</p>
-                                          <input
-                                                placeholder={ &user.email }
-                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
-                                        </div>
+                                                <div>
+                                                    <p>{ "User name:" }</p>
+                                                    <input
+                                                        placeholder={ &user.user_name }
+                                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                                                </div>
 
-                                        <div>
-                                          <p>{ "Password:" }</p>
-                                          <input
-                                                type="password" placeholder="enter new password"
-                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
-                                          <input
-                                                type="password" placeholder="retype new password"
-                                                oninput=self.link.callback(|e: InputData| Msg::UpdateEditRetypePassword(e.value)) />
-                                        </div>
+                                                <div>
+                                                    <p>{ "Email:" }</p>
+                                                    <input
+                                                        placeholder={ &user.email }
+                                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditEmail(e.value)) />
+                                                </div>
 
-                                        <div class="apply_cancel_container">
-                                          <button class="button" onclick=self.link.callback(|_| Msg::Save)>{ "Save" }</button>
-                                        </div>
-                                        {
-                                            if let Some(error_message) = &self.state.error_message
-                                            {
-                                                html! { <h4>{ error_message }</h4> }
-                                            }
-                                            else
-                                            {
-                                                html! {  }
-                                            }
-                                        }
+                                                <div>
+                                                    <p>{ "Password:" }</p>
+                                                    <input
+                                                        type="password" placeholder="enter new password"
+                                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                                                    <input
+                                                        type="password" placeholder="retype new password"
+                                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditRetypePassword(e.value)) />
+                                                </div>
 
-                                        {
-                                            if user.is_superuser
+                                                <div class="apply_cancel_container">
+                                                    <button class="button" onclick=self.link.callback(|_| Msg::Save)>{ "Save" }</button>
+                                                </div>
+
+                                                {
+                                                    if let Some(error_message) = &self.state.error_message
+                                                    {
+                                                        html! { <h4>{ error_message }</h4> }
+                                                    }
+                                                    else
+                                                    {
+                                                        html! {  }
+                                                    }
+                                                }
+
+                                            </div>
+
                                             {
-                                                html! { <AllUsers /> }
+                                                if user.is_superuser
+                                                {
+                                                    html! { <AllUsers token=self.props.token.clone() /> }
+                                                }
+                                                else
+                                                {
+                                                    html! {  }
+                                                }
                                             }
-                                            else
-                                            {
-                                                html! {  }
-                                            }
-                                        }
-                                    </>
+                                        </>
+                                    }
                                 }
-                            }
-                            else
-                            {
-                                html! { <h3>{ "Undefined user." } </h3> }
+                                else
+                                {
+                                    html! { <h3>{ "Undefined user." } </h3> }
+                                }
                             }
                         }
                     }
-                }
-              </div>
-          </main>
+                </div>
+            </main>
         }
     }
 }

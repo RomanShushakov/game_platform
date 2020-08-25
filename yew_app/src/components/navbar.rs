@@ -133,23 +133,23 @@ impl Component for NavBar
 
                 <div class="container">
 
-                  <div class="logo menu_item">
+                    <div class="logo menu_item">
                     { self.view_logo() }
-                  </div>
-                  <nav class="header_navigation">
+                    </div>
+                    <nav class="header_navigation">
                     <ul class="header_list">
-                      <li class="header_list_item">
+                        <li class="header_list_item">
                         <Anchor route=AppRoute::HomePage>{ "Home" }</Anchor>
-                      </li>
-                      <li class="header_list_item">
+                        </li>
+                        <li class="header_list_item">
                         <a href="#">{ "Checkers" }</a>
-                      </li>
+                        </li>
                     </ul>
-                  </nav>
+                    </nav>
 
-                  <div class="authentication_buttons">
+                    <div class="authentication_buttons">
                     { self.view_auth_buttons() }
-                  </div>
+                    </div>
                 </div>
             </header>
         }

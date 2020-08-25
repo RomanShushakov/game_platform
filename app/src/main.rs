@@ -64,7 +64,7 @@ async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::User
         let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
         let key = secret_key.as_bytes();
 
-        let expiration_date = Utc::now() + Duration::minutes(360);
+        let expiration_date = Utc::now() + Duration::minutes(300);
         let claims = models::Claims
             { user_name: user.user_name.to_string(), email: user.email.to_string(), exp: expiration_date.timestamp() as usize };
         let token = encode(&Header::default(), &claims,&EncodingKey::from_secret(key)).unwrap();
@@ -256,8 +256,9 @@ async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<Htt
 {
     let undefined_user = models::User::default();
     let users = vec![undefined_user];
-    let undefined_users = templates::AllUsers { users }.render().unwrap();
-    let undefined_users_response = Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users));
+    // let undefined_users = templates::AllUsers { users }.render().unwrap();
+    // let undefined_users_response = Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users));
+    let undefined_users_response = Ok(HttpResponse::Ok().json(users));
 
     if let Some(received_token) = request.headers().get("authorization")
     {
@@ -272,8 +273,9 @@ async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<Htt
                     {
                         Ok(Some(users)) =>
                             {
-                                let all_users = templates::AllUsers { users }.render().unwrap();
-                                Ok(HttpResponse::Ok().content_type("text/html").body(all_users))
+                                // let all_users = templates::AllUsers { users }.render().unwrap();
+                                // Ok(HttpResponse::Ok().content_type("text/html").body(all_users))
+                                Ok(HttpResponse::Ok().json(users))
                             },
                         Ok(None) => undefined_users_response,
                         Err(e) => Err(e)
