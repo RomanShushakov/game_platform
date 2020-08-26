@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
-use yew::format::{Nothing, Json};
+use yew::format::Json;
 use anyhow::Error;
 
 use crate::types::{AuthorizedUserResponse, UserSignInDataRequest, UserSignInDataResponse};

@@ -4,8 +4,9 @@ use yew::format::{Nothing, Json};
 use anyhow::Error;
 
 use validator;
+use serde_json::json;
 
-use crate::types::User;
+use crate::types::{User, UserChangeStatusRequest};
 use crate::KEY;
 
 
@@ -20,11 +21,17 @@ pub struct Props
 }
 
 
+struct State
+{
+    users: Option<Vec<User>>,
+}
+
+
 pub struct AllUsers
 {
     link: ComponentLink<Self>,
     props: Props,
-    users: Option<Vec<User>>,
+    state: State,
     fetch_task: Option<FetchTask>,
 }
 
@@ -32,10 +39,12 @@ pub struct AllUsers
 pub enum Msg
 {
     ShowAllUsers,
-    Successful(Result<Vec<User>, Error>),
-    Unsuccessful
-
-
+    UsersListReceived(Result<Vec<User>, Error>),
+    UsersListNotReceived,
+    HideAllUsers,
+    ChangeUserStatus(String),
+    UserStatusChanged(Result<String, Error>),
+    UserStatusNotChanged(Result<String, Error>),
 }
 
 
@@ -49,17 +58,41 @@ impl AllUsers
                     let (meta, Json(data)) = response.into_parts();
                     if meta.status.is_success()
                     {
-                        Msg::Successful(data)
+                        Msg::UsersListReceived(data)
                     }
                     else
                     {
-                        Msg::Unsuccessful
+                        Msg::UsersListNotReceived
                     }
                 },
         );
         let request = Request::get("/auth/all_users")
             .header(KEY, token )
             .body(Nothing).unwrap();
+        FetchService::fetch(request, callback).unwrap()
+    }
+
+
+    fn change_user_status(&self, token: &str, user_change_status_data: UserChangeStatusRequest) -> FetchTask
+    {
+        let callback = self.link.callback(
+            move |response: Response<Result<String, Error>>|
+                {
+                    let (meta, data) = response.into_parts();
+                    if meta.status.is_success()
+                    {
+                        Msg::UserStatusChanged(data)
+                    }
+                    else
+                    {
+                        Msg::UserStatusNotChanged(data)
+                    }
+                },
+        );
+        let request = Request::post("/auth/change_user_status")
+            .header("Content-Type", "application/json")
+            .header(KEY, token )
+            .body(Json(&user_change_status_data)).unwrap();
         FetchService::fetch(request, callback).unwrap()
     }
 }
@@ -73,7 +106,7 @@ impl Component for AllUsers
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self
     {
-        Self { props, link, users: None, fetch_task: None }
+        Self { props, link, state: State { users: None }, fetch_task: None }
     }
 
 
@@ -90,16 +123,38 @@ impl Component for AllUsers
                     }
                     else { return false }
                 },
-            Msg::Successful(response) => self.users = response.ok(),
-            Msg::Unsuccessful => return false
+            Msg::UsersListReceived(response) => self.state.users = response.ok(),
+            Msg::UsersListNotReceived => return false,
+            Msg::HideAllUsers => self.state.users = None,
+            Msg::ChangeUserStatus(uid) =>
+                {
+                    if let Some(token) = &self.props.token
+                    {
+                        let user_change_status_data = UserChangeStatusRequest { uid };
+                        let task = self.change_user_status(token, user_change_status_data);
+                        self.fetch_task = Some(task);
+                    }
+                    else { return false }
+                },
+            Msg::UserStatusChanged(response) =>
+                {
+                    yew::services::dialog::DialogService::alert(&response.unwrap());
+                    self.link.send_message(Msg::ShowAllUsers);
+                },
+            Msg::UserStatusNotChanged(response) =>
+                {
+                    yew::services::ConsoleService::log(&response.unwrap());
+                    return false
+                }
         }
         true
     }
 
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender
+    fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        false
+        self.props = props;
+        true
     }
 
 
@@ -110,12 +165,12 @@ impl Component for AllUsers
             <>
                 <div class="all_users_info">
                     <button onclick=self.link.callback(|_| Msg::ShowAllUsers)>{ "show all users" }</button>
-                    <button disabled=true>{ "hide all users" }</button>
+                    <button onclick=self.link.callback(|_| Msg::HideAllUsers)>{ "hide all users" }</button>
                 </div>
 
                 <div>
                     {
-                        if let Some(users) = &self.users
+                        if let Some(users) = &self.state.users
                         {
                             html!
                             {
@@ -142,11 +197,13 @@ impl Component for AllUsers
                                                         {
                                                             if user.is_active
                                                             {
-                                                                html! { <button>{ "deactivate" }</button> }
+                                                                let uid = user.id.to_string();
+                                                                html! { <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>{ "deactivate" }</button> }
                                                             }
                                                             else
                                                             {
-                                                                html! { <button>{ "activate" }</button> }
+                                                                let uid = user.id.to_string();
+                                                                html! { <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>{ "activate" }</button> }
                                                             }
                                                         }
                                                     </td>

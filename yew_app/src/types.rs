@@ -53,3 +53,10 @@ pub struct User
     pub is_superuser: bool,
     pub is_active: bool
 }
+
+
+#[derive(Serialize, Clone)]
+pub struct UserChangeStatusRequest
+{
+    pub uid: String,
+}

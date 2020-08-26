@@ -8,7 +8,7 @@ use validator;
 use crate::types::{AuthorizedUserResponse, UserUpdateDataRequest};
 use crate::KEY;
 
-use crate::pages::AllUsers;
+use crate::components::AllUsers;
 
 
 #[derive(Properties, Clone)]

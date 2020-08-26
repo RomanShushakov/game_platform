@@ -4,7 +4,7 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use crate::route::AppRoute;
 use yew_router::components::RouterAnchor;
 
-use yew::format::{Nothing, Json};
+use yew::format::Json;
 use anyhow::Error;
 
 use crate::types::UserRegisterData;
