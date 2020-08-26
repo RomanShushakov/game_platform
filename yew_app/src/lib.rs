@@ -21,9 +21,9 @@ use route::AppRoute;
 use types::AuthorizedUserResponse;
 
 
-pub const KEY: &str = "authorization";
+const KEY: &str = "authorization";
 
-pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
+type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 

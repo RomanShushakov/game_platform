@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::users_data;
 
+
 #[derive(Debug, Serialize, Queryable, Insertable)]
 #[table_name="users_data"]
 pub struct User
@@ -12,23 +13,6 @@ pub struct User
     pub password: String,
     pub is_superuser: bool,
     pub is_active: bool
-}
-
-
-impl Default for User
-{
-    fn default() -> Self
-    {
-        Self
-        {
-            id: "undefined".to_string(),
-            user_name: "undefined".to_string(),
-            email: "undefined".to_string(),
-            password: "undefined".to_string(),
-            is_superuser: false,
-            is_active: false
-        }
-    }
 }
 
 
@@ -89,6 +73,31 @@ pub struct UserUpdateDataRequest
     pub edited_user_name: Option<String>,
     pub edited_email: Option<String>,
     pub edited_password: Option<String>
+}
+
+
+#[derive(Serialize)]
+pub struct UserForAllUsersResponse
+{
+    pub id: String,
+    pub user_name: String,
+    pub email: String,
+    pub is_active: bool
+}
+
+
+impl Default for UserForAllUsersResponse
+{
+    fn default() -> Self
+    {
+        Self
+        {
+            id: "undefined".to_string(),
+            user_name: "undefined".to_string(),
+            email: "undefined".to_string(),
+            is_active: false
+        }
+    }
 }
 
 

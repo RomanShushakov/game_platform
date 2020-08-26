@@ -254,7 +254,7 @@ async fn extract_users_data(pool: &web::Data<DbPool>) -> Result<Option<Vec<model
 
 async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, Error>
 {
-    let undefined_user = models::User::default();
+    let undefined_user = models::UserForAllUsersResponse::default();
     let users = vec![undefined_user];
     // let undefined_users = templates::AllUsers { users }.render().unwrap();
     // let undefined_users_response = Ok(HttpResponse::Ok().content_type("text/html").body(undefined_users));
@@ -275,7 +275,18 @@ async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<Htt
                             {
                                 // let all_users = templates::AllUsers { users }.render().unwrap();
                                 // Ok(HttpResponse::Ok().content_type("text/html").body(all_users))
-                                Ok(HttpResponse::Ok().json(users))
+
+                                let mut users_data = Vec::new();
+                                for user in users
+                                {
+                                    let current_user = models::UserForAllUsersResponse
+                                        {
+                                            id: user.id, user_name: user.user_name, email: user.email, is_active: user.is_active
+                                        };
+                                    users_data.push(current_user)
+                                }
+
+                                Ok(HttpResponse::Ok().json(users_data))
                             },
                         Ok(None) => undefined_users_response,
                         Err(e) => Err(e)

@@ -3,7 +3,7 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::format::{Nothing, Json};
 use anyhow::Error;
 
-use crate::types::{User, UserChangeStatusRequest};
+use crate::types::{UserForAllUsersResponse, UserChangeStatusRequest};
 use crate::KEY;
 
 
@@ -20,7 +20,7 @@ pub struct Props
 
 struct State
 {
-    users: Option<Vec<User>>,
+    users: Option<Vec<UserForAllUsersResponse>>,
 }
 
 
@@ -36,7 +36,7 @@ pub struct AllUsers
 pub enum Msg
 {
     ShowAllUsers,
-    UsersListReceived(Result<Vec<User>, Error>),
+    UsersListReceived(Result<Vec<UserForAllUsersResponse>, Error>),
     UsersListNotReceived,
     HideAllUsers,
     ChangeUserStatus(String),
@@ -49,8 +49,8 @@ impl AllUsers
 {
     fn show_all_users(&self, token: &str) -> FetchTask
     {
-        let callback: FetchCallback<Vec<User>> = self.link.callback(
-            move |response: FetchResponse<Vec<User>>|
+        let callback: FetchCallback<Vec<UserForAllUsersResponse>> = self.link.callback(
+            move |response: FetchResponse<Vec<UserForAllUsersResponse>>|
                 {
                     let (meta, Json(data)) = response.into_parts();
                     if meta.status.is_success()
@@ -184,7 +184,7 @@ impl Component for AllUsers
                                         </thead>
                                         <tbody>
                                         {
-                                            for users.iter().map(|user: &User| html!
+                                            for users.iter().map(|user: &UserForAllUsersResponse| html!
                                             {
                                                 <tr>
                                                     <td>{ user.user_name.to_string() }</td>

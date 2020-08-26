@@ -44,13 +44,11 @@ pub struct UserUpdateDataRequest
 
 
 #[derive(Deserialize)]
-pub struct User
+pub struct UserForAllUsersResponse
 {
     pub id: String,
     pub user_name: String,
     pub email: String,
-    pub password: String,
-    pub is_superuser: bool,
     pub is_active: bool
 }
 
