@@ -428,8 +428,8 @@ async fn main() -> std::io::Result<()>
 
                         .route("/change_user_status", web::post().to(change_user_status)))
 
-                // .service(Files::new("", "./web_layout").index_file("index.html"))
-                .service(Files::new("", "../yew_app/web_layout").index_file("index.html"))
+                // .service(Files::new("", "./web_layout/obsolete").index_file("index.html"))
+                .service(Files::new("", "./web_layout").index_file("index.html"))
         })
     .bind(&bind)?
     .run()

@@ -3,9 +3,6 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::format::{Nothing, Json};
 use anyhow::Error;
 
-use validator;
-use serde_json::json;
-
 use crate::types::{User, UserChangeStatusRequest};
 use crate::KEY;
 
@@ -198,12 +195,22 @@ impl Component for AllUsers
                                                             if user.is_active
                                                             {
                                                                 let uid = user.id.to_string();
-                                                                html! { <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>{ "deactivate" }</button> }
+                                                                html!
+                                                                {
+                                                                    <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>
+                                                                        { "deactivate" }
+                                                                    </button>
+                                                                }
                                                             }
                                                             else
                                                             {
                                                                 let uid = user.id.to_string();
-                                                                html! { <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>{ "activate" }</button> }
+                                                                html!
+                                                                {
+                                                                    <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>
+                                                                        { "activate" }
+                                                                    </button>
+                                                                }
                                                             }
                                                         }
                                                     </td>
