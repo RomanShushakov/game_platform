@@ -10,6 +10,8 @@ pub enum AppRoute
     RegisterUser,
     #[to = "/#auth/user_info"]
     UserInfo,
+    #[to = "/#checkers"]
+    CheckersGame,
     #[to = "/"]
     HomePage,
 }

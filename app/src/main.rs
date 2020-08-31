@@ -20,6 +20,18 @@ mod schema;
 mod database;
 mod templates;
 
+// mod checkers_game;
+//
+// use checkers_game::chat_route;
+// use checkers_game::ChatServer;
+
+mod checkers_game;
+
+use checkers_game::chat::chat::chat_route;
+use checkers_game::chat::server::ChatServer;
+
+use actix::*;
+
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
@@ -373,6 +385,8 @@ async fn main() -> std::io::Result<()>
         .build(manager)
         .expect("Failed to create pool.");
 
+    let server = ChatServer::default().start();
+
     let bind = "0.0.0.0:8080";
     println!("Starting server at: {}", &bind);
 
@@ -382,6 +396,9 @@ async fn main() -> std::io::Result<()>
             App::new()
                 // set up DB pool to be used with web::Data<Pool> extractor
                 .data(pool.clone())
+
+                .data(server.clone())
+
                 .wrap(middleware::Logger::default())
                 .service(
                     web::scope("/auth")
@@ -438,6 +455,8 @@ async fn main() -> std::io::Result<()>
                         .route("/all_users", web::get().to(show_users))
 
                         .route("/change_user_status", web::post().to(change_user_status)))
+
+                .service(web::resource("/ws/").to(chat_route))
 
                 // .service(Files::new("", "./web_layout/obsolete").index_file("index.html"))
                 .service(Files::new("", "./web_layout").index_file("index.html"))

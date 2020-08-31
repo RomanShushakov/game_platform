@@ -27,3 +27,10 @@ jsonwebtoken = "7.2.0"
 chrono = "0.4.15"
 
 askama = "0.10.3"
+
+actix = "0.9"
+actix-web-actors = "2.0"
+
+rand = "0.7"
+byteorder = "1.3"
+futures = "0.3"

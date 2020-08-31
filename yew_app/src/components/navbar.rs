@@ -137,14 +137,14 @@ impl Component for NavBar
                     { self.view_logo() }
                     </div>
                     <nav class="header_navigation">
-                    <ul class="header_list">
-                        <li class="header_list_item">
-                        <Anchor route=AppRoute::HomePage>{ "Home" }</Anchor>
-                        </li>
-                        <li class="header_list_item">
-                        <a href="#">{ "Checkers" }</a>
-                        </li>
-                    </ul>
+                        <ul class="header_list">
+                            <li class="header_list_item">
+                                <Anchor route=AppRoute::HomePage>{ "Home" }</Anchor>
+                            </li>
+                            <li class="header_list_item">
+                                <Anchor route=AppRoute::CheckersGame>{ "Checkers" }</Anchor>
+                            </li>
+                        </ul>
                     </nav>
 
                     <div class="authentication_buttons">

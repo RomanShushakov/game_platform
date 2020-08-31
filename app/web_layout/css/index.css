@@ -133,3 +133,11 @@ h3 {
     margin-top: 0.5rem;
     align-self: center;
 }
+
+
+.checkers_game_chat_log {
+    width: 20rem;
+    height: 15rem;
+    overflow: auto;
+    border: 1px solid black;
+}

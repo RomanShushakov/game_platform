@@ -27,7 +27,7 @@ impl Component for HomePage
     {
         html!
         {
-            <h2>{ "HomePage" }</h2>
+            <h2>{ "Home page" }</h2>
         }
     }
 }

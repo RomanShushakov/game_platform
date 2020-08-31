@@ -16,7 +16,7 @@ mod pages;
 mod types;
 
 use components::NavBar;
-use pages::{HomePage, SignInUser, RegisterUser, UserInfo};
+use pages::{HomePage, SignInUser, RegisterUser, UserInfo, CheckersGame};
 use route::AppRoute;
 use types::AuthorizedUserResponse;
 
@@ -173,6 +173,7 @@ impl Component for Model
                                             identify_user=handle_identify_user.clone() /> },
             AppRoute::RegisterUser => html! { <RegisterUser /> },
             AppRoute::UserInfo => html! { <UserInfo user=user.clone(), token=token.clone(), sign_out=handle_sign_out.clone() /> },
+            AppRoute::CheckersGame => html! { <CheckersGame user=user.clone() /> },
             AppRoute::HomePage => html! { <HomePage /> },
         });
 
