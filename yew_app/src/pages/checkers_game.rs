@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use yew::format::{Json, Nothing};
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
 
+use web_sys;
+
 
 use crate::types::{AuthorizedUserResponse};
 
@@ -31,7 +33,6 @@ pub struct WsResponse
 }
 
 
-
 struct ChatMessage
 {
     message: String
@@ -43,6 +44,7 @@ struct State
     message: Option<String>,
     chat_messages: Vec<ChatMessage>,
     is_connected: bool,
+    is_chat_room_defined: bool,
 }
 
 
@@ -100,12 +102,33 @@ impl Component for CheckersGame
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self
     {
-        Self { link, props, state: State { message: None, chat_messages: Vec::new(), is_connected: false }, ws: None }
+        Self
+        {
+            link, props,
+            state: State { message: None, chat_messages: Vec::new(), is_connected: false, is_chat_room_defined: false },
+            ws: None
+        }
     }
 
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender
     {
+        if let Some(_) = &self.ws
+        {
+            if !self.state.is_chat_room_defined
+            {
+                let join_to_room_request = WsRequest { action: "join_to_room".to_owned(), text: "/join checkers_game".to_owned() };
+                self.ws.as_mut().unwrap().send(Json(&join_to_room_request));
+
+                if let Some(user) = &self.props.user
+                {
+                    let set_name_request = WsRequest { action: "set_name".to_owned(), text: format!("/name {}", user.user_name) };
+                    self.ws.as_mut().unwrap().send(Json(&set_name_request));
+                }
+                self.state.is_chat_room_defined = true;
+            }
+        }
+
         match msg
         {
             Msg::UpdateEditMessage(e) => self.state.message = Some(e),
@@ -126,6 +149,7 @@ impl Component for CheckersGame
                                         .unwrap();
                                 self.ws = Some(task);
                                 self.state.is_connected = true;
+                                self.state.is_chat_room_defined = false;
                             },
                         WsAction::SendData =>
                             {
@@ -204,7 +228,7 @@ impl Component for CheckersGame
                             }
                         }
                     </div>
-                    <div class="checkers_game_chat_log">
+                    <div id="checkers_game_chat_log" class="checkers_game_chat_log">
                         {
                             for self.state.chat_messages.iter().map(|chat_message: &ChatMessage|
                             {
@@ -212,7 +236,7 @@ impl Component for CheckersGame
                             })
                         }
                     </div>
-                    <form>
+                     <form onSubmit="return false;">
                         <input
                             oninput=self.link.callback(|e: InputData| Msg::UpdateEditMessage(e.value)) />
                         {
@@ -244,6 +268,13 @@ impl Component for CheckersGame
         if first_render
         {
             self.link.send_message(WsAction::Connect);
+        }
+
+        if let Some(element) = web_sys::window().unwrap()
+            .document().unwrap()
+            .get_element_by_id("checkers_game_chat_log")
+        {
+            element.set_scroll_top(element.scroll_height());
         }
     }
 }

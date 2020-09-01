@@ -195,11 +195,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                                 name: self.room.clone(),
                                             });
 
-                                            ctx.text("joined");
+                                            let response = WsResponse { text: "joined".to_owned() };
+                                            ctx.text(serde_json::to_string(&response).unwrap());
                                         }
                                         else
                                         {
-                                            ctx.text("!!! room name is required");
+                                            let response = WsResponse { text: "!!! room name is required".to_owned() };
+                                            ctx.text(serde_json::to_string(&response).unwrap());
                                         }
                                     },
                                 "/name" =>
