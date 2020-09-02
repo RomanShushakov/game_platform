@@ -1,4 +1,5 @@
 use yew::prelude::*;
+use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
@@ -8,7 +9,11 @@ use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask}
 use web_sys;
 
 
-use crate::types::{AuthorizedUserResponse};
+use crate::types::AuthorizedUserResponse;
+
+
+pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
+type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 
 #[derive(Properties, Clone)]
@@ -39,6 +44,14 @@ struct ChatMessage
 }
 
 
+#[derive(Deserialize)]
+pub struct ChatMessageResponse
+{
+    user_name: String,
+    message: String
+}
+
+
 struct State
 {
     message: Option<String>,
@@ -54,6 +67,7 @@ pub struct CheckersGame
     props: Props,
     state: State,
     ws: Option<WebSocketTask>,
+    fetch_task: Option<FetchTask>,
 }
 
 
@@ -62,6 +76,41 @@ impl CheckersGame
     fn add_message_to_content(&mut self, message: String)
     {
         self.state.chat_messages.push(ChatMessage { message });
+    }
+
+
+    fn show_chat_log(&self) -> FetchTask
+    {
+        let callback: FetchCallback<Vec<ChatMessageResponse>> = self.link.callback(
+            move |response: FetchResponse<Vec<ChatMessageResponse>>|
+                {
+                    let (meta, Json(data)) = response.into_parts();
+                    if meta.status.is_success()
+                    {
+                        Msg::ChatLogReceived(data)
+                    }
+                    else
+                    {
+                        Msg::ChatLogNotReceived
+                    }
+                },
+        );
+        let request = Request::get("/checkers_game/chat/extract_log")
+            .body(Nothing).unwrap();
+        FetchService::fetch(request, callback).unwrap()
+    }
+
+
+    fn extract_chat_messages(&mut self, messages: Option<Vec<ChatMessageResponse>>)
+    {
+        if let Some(messages) = messages
+        {
+            for message in messages
+            {
+                let message_to_add = format!("{}: {}", message.user_name, message.message);
+                self.add_message_to_content(message_to_add);
+            }
+        }
     }
 }
 
@@ -87,10 +136,14 @@ impl From<WsAction> for Msg
 pub enum Msg
 {
     UpdateEditMessage(String),
+    DefineButton(u32),
     WsAction(WsAction),
     WsReady(Result<WsResponse, Error>),
     // WsReady(Result<String, Error>),
     Ignore,
+    ShowChatLog,
+    ChatLogReceived(Result<Vec<ChatMessageResponse>, Error>),
+    ChatLogNotReceived,
 }
 
 
@@ -105,8 +158,12 @@ impl Component for CheckersGame
         Self
         {
             link, props,
-            state: State { message: None, chat_messages: Vec::new(), is_connected: false, is_chat_room_defined: false },
-            ws: None
+            state: State
+                {
+                    message: None, chat_messages: Vec::new(),
+                    is_connected: false, is_chat_room_defined: false
+                },
+            ws: None, fetch_task: None
         }
     }
 
@@ -117,12 +174,12 @@ impl Component for CheckersGame
         {
             if !self.state.is_chat_room_defined
             {
-                let join_to_room_request = WsRequest { action: "join_to_room".to_owned(), text: "/join checkers_game".to_owned() };
+                let join_to_room_request = WsRequest { action: "join_to_room".to_owned(), text: "checkers_game".to_owned() };
                 self.ws.as_mut().unwrap().send(Json(&join_to_room_request));
 
                 if let Some(user) = &self.props.user
                 {
-                    let set_name_request = WsRequest { action: "set_name".to_owned(), text: format!("/name {}", user.user_name) };
+                    let set_name_request = WsRequest { action: "set_name".to_owned(), text: format!("{}", user.user_name) };
                     self.ws.as_mut().unwrap().send(Json(&set_name_request));
                 }
                 self.state.is_chat_room_defined = true;
@@ -132,6 +189,13 @@ impl Component for CheckersGame
         match msg
         {
             Msg::UpdateEditMessage(e) => self.state.message = Some(e),
+            Msg::DefineButton(key_code) =>
+                {
+                    if key_code == 13
+                    {
+                        self.link.send_message(WsAction::SendData);
+                    }
+                },
             Msg::WsAction(action) =>
                 {
                     match action
@@ -159,9 +223,14 @@ impl Component for CheckersGame
                                     {
                                         if let Some(_) = &self.ws
                                         {
-                                            self.add_message_to_content(message.to_owned());
-
-                                            // self.ws.as_mut().unwrap().send(Json(&message));
+                                            if let Some(_) = &self.props.user
+                                            {
+                                                self.add_message_to_content(format!("You: {}", message));
+                                            }
+                                            else
+                                            {
+                                                self.add_message_to_content(message.to_owned());
+                                            }
 
                                             let request = WsRequest { action: "send_message".to_owned(), text: message.to_owned() };
                                             self.ws.as_mut().unwrap().send(Json(&request));
@@ -190,7 +259,17 @@ impl Component for CheckersGame
                         self.add_message_to_content(received_data);
                     }
                     else { return false; }
-                }
+                },
+            Msg::ShowChatLog =>
+                {
+                    let task = self.show_chat_log();
+                    self.fetch_task = Some(task);
+                },
+            Msg::ChatLogReceived(response) =>
+                {
+                    self.extract_chat_messages(response.ok());
+                },
+            Msg::ChatLogNotReceived => return false,
         }
         true
     }
@@ -236,27 +315,38 @@ impl Component for CheckersGame
                             })
                         }
                     </div>
-                     <form onSubmit="return false;">
-                        <input
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateEditMessage(e.value)) />
-                        {
-                            if let Some(_) = &self.props.user
+                    <input
+                        value=
                             {
-                                if self.state.is_connected
+                                if let Some(message) = &self.state.message
                                 {
-                                    html! { <button type="reset" onclick=self.link.callback(|_| WsAction::SendData)>{ "Send" }</button> }
+                                    message.to_string()
                                 }
                                 else
                                 {
-                                    html! { <button disabled=true>{ "Send" }</button> }
+                                    "".to_string()
                                 }
+                            }
+                        oninput=self.link.callback(|d: InputData| Msg::UpdateEditMessage(d.value))
+                        onkeypress=self.link.callback(|e: KeyboardEvent| Msg::DefineButton(e.key_code()))
+                    />
+                    {
+                        if let Some(_) = &self.props.user
+                        {
+                            if self.state.is_connected
+                            {
+                                html! { <button type="reset" onclick=self.link.callback(|_| WsAction::SendData)>{ "Send" }</button> }
                             }
                             else
                             {
                                 html! { <button disabled=true>{ "Send" }</button> }
                             }
                         }
-                    </form>
+                        else
+                        {
+                            html! { <button disabled=true>{ "Send" }</button> }
+                        }
+                    }
                 </div>
             </main>
         }
@@ -267,6 +357,7 @@ impl Component for CheckersGame
     {
         if first_render
         {
+            self.link.send_message(Msg::ShowChatLog);
             self.link.send_message(WsAction::Connect);
         }
 

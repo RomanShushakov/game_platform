@@ -16,7 +16,6 @@ pub struct User
 }
 
 
-/// deserialize `UserRegisterData` from request's body, max payload size is 1kb
 #[derive(Deserialize)]
 pub struct UserRegisterData
 {
@@ -25,7 +24,7 @@ pub struct UserRegisterData
     pub password: String
 }
 
-/// deserialize `UserSignInDataRequest` from request's body, max payload size is 1kb
+
 #[derive(Deserialize)]
 pub struct UserSignInDataRequest
 {

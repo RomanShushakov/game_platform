@@ -27,13 +27,15 @@ mod templates;
 
 mod checkers_game;
 
-use checkers_game::chat::chat::chat_route;
+use checkers_game::chat::chat::{chat_route, extract_chat_log};
+// use checkers_game::chat::chat::{chat_route};
 use checkers_game::chat::server::ChatServer;
+
 
 use actix::*;
 
 
-type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>)
     -> Result<Result<HttpResponse, database::MyError> , Error>
@@ -457,6 +459,8 @@ async fn main() -> std::io::Result<()>
                         .route("/change_user_status", web::post().to(change_user_status)))
 
                 .service(web::resource("/ws/").to(chat_route))
+
+                .route("/checkers_game/chat/extract_log", web::get().to(extract_chat_log))
 
                 // .service(Files::new("", "./web_layout/obsolete").index_file("index.html"))
                 .service(Files::new("", "./web_layout").index_file("index.html"))

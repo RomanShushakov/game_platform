@@ -1,8 +1,7 @@
 use std::time::{Duration, Instant};
 
 use actix::*;
-use actix_files as fs;
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 
 use crate::checkers_game::chat::chat_models::{WsRequest, WsResponse};
@@ -13,6 +12,9 @@ use serde_json;
 
 use crate::checkers_game::chat::server;
 
+use crate::DbPool;
+use crate::checkers_game::chat::chat_database;
+
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -21,7 +23,7 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 
 /// Entry point for our route
-pub async fn chat_route(req: HttpRequest, stream: web::Payload, srv: web::Data<Addr<server::ChatServer>>,)
+pub async fn chat_route(req: HttpRequest, stream: web::Payload, srv: web::Data<Addr<server::ChatServer>>, pool: web::Data<DbPool>)
     -> Result<HttpResponse, Error>
 {
     ws::start(
@@ -32,11 +34,34 @@ pub async fn chat_route(req: HttpRequest, stream: web::Payload, srv: web::Data<A
             room: "Main".to_owned(),
             name: None,
             addr: srv.get_ref().clone(),
+            pool
         },
         &req,
         stream,
     )
 }
+
+
+fn insert_new_message(pool: web::Data<DbPool>, name: String, m: String)
+{
+    let conn = pool.get().expect("couldn't get db connection from pool");
+    chat_database::insert_new_message(name.to_owned(), m.to_owned(), &conn);
+}
+
+
+pub async fn extract_chat_log(pool: web::Data<DbPool>, _request: HttpRequest) -> Result<HttpResponse, Error>
+{
+    let conn = pool.get().expect("couldn't get db connection from pool");
+    let all_messages = web::block(move || chat_database::extract_chat_log(&conn))
+    .await
+    .map_err(|e|
+        {
+            eprintln!("{}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    Ok(HttpResponse::Ok().json(all_messages))
+}
+
 
 struct WsChatSession
 {
@@ -51,6 +76,8 @@ struct WsChatSession
     name: Option<String>,
     /// Chat server
     addr: Addr<server::ChatServer>,
+    /// db pool
+    pool: web::Data<DbPool>
 }
 
 impl Actor for WsChatSession
@@ -144,104 +171,146 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                     let received_request: Result<WsRequest, _> = serde_json::from_str(&text);
                     if let Ok(request) = received_request
                     {
-                    //     let m = text.trim();
-                    //     let m = text;
-                        let act = request.action;
-                        let m = request.text;
+                        let act = request.action.trim();
+                        let m = request.text.trim();
 
-                        // we check for /sss type of messages
-                        if m.starts_with('/')
+                        match act
                         {
-                            let v: Vec<&str> = m.splitn(2, ' ').collect();
-                            match v[0]
-                            {
-                                "/list" =>
+                            "join_to_room" =>
+                                {
+                                    self.room = m.to_owned();
+                                    self.addr.do_send(server::Join
                                     {
-                                        // Send ListRooms message to chat server and wait for
-                                        // response
-                                        println!("List rooms");
-                                        self.addr
-                                            .send(server::ListRooms)
-                                            .into_actor(self)
-                                            .then(|res, _, ctx|
-                                                {
-                                                    match res
-                                                    {
-                                                        Ok(rooms) =>
-                                                            {
-                                                                for room in rooms
-                                                                {
-                                                                    let response = WsResponse { text: room };
-                                                                    ctx.text(serde_json::to_string(&response).unwrap());
-                                                                }
-                                                            }
-                                                        _ => println!("Something is wrong"),
-                                                    }
-                                                    fut::ready(())
-                                                })
-                                            .wait(ctx)
-                                        // .wait(ctx) pauses all events in context,
-                                        // so actor wont receive any new messages until it get list
-                                        // of rooms back
-                                    },
-                                "/join" =>
-                                    {
-                                        if v.len() == 2
-                                        {
-                                            self.room = v[1].to_owned();
-                                            self.addr.do_send(server::Join
-                                            {
-                                                id: self.id,
-                                                name: self.room.clone(),
-                                            });
+                                        id: self.id,
+                                        name: self.room.clone(),
+                                    });
 
-                                            let response = WsResponse { text: "joined".to_owned() };
-                                            ctx.text(serde_json::to_string(&response).unwrap());
-                                        }
-                                        else
-                                        {
-                                            let response = WsResponse { text: "!!! room name is required".to_owned() };
-                                            ctx.text(serde_json::to_string(&response).unwrap());
-                                        }
-                                    },
-                                "/name" =>
+                                    let response = WsResponse { text: "joined".to_owned() };
+                                    ctx.text(serde_json::to_string(&response).unwrap());
+                                },
+                            "set_name" => self.name = Some(m.to_owned()),
+                            "send_message" =>
+                                {
+                                    let msg = if let Some(ref name) = self.name
                                     {
-                                        if v.len() == 2
-                                        {
-                                            self.name = Some(v[1].to_owned());
-                                        }
-                                        else
-                                        {
-                                            let response = WsResponse { text: "!!! name is required".to_owned() };
-                                            ctx.text(serde_json::to_string(&response).unwrap());
-                                        }
-                                    },
-                                _ =>
+                                        insert_new_message(self.pool.clone(), name.to_owned(), m.to_owned());
+                                        format!("{}: {}", name, m)
+                                    }
+                                    else
                                     {
-                                        let response = WsResponse { text: format!("!!! unknown command: {:?}", m).to_owned() };
-                                        ctx.text(serde_json::to_string(&response).unwrap());
-                                    },
-                            }
+                                        m.to_owned()
+                                    };
+                                    println!("{}", msg);
+                                    // send message to chat server
+                                    self.addr.do_send(server::ClientMessage
+                                    {
+                                        id: self.id,
+                                        msg,
+                                        room: self.room.clone(),
+                                    })
+                                },
+                            _ =>
+                                {
+                                    let response = WsResponse { text: format!("!!! unknown command: {:?}", m).to_owned() };
+                                    ctx.text(serde_json::to_string(&response).unwrap());
+                                }
                         }
-                        else
-                        {
-                            let msg = if let Some(ref name) = self.name
-                            {
-                                format!("{}: {}", name, m)
-                            }
-                            else
-                            {
-                                m.to_owned()
-                            };
-                            println!("{}", msg);
-                            // send message to chat server
-                            self.addr.do_send(server::ClientMessage
-                            {
-                                id: self.id,
-                                msg,
-                                room: self.room.clone(),
-                            })
-                        }
+
+
+                        // // we check for /sss type of messages
+                        // if m.starts_with('/')
+                        // {
+                        //     let v: Vec<&str> = m.splitn(2, ' ').collect();
+                        //     match v[0]
+                        //     {
+                        //         "/list" =>
+                        //             {
+                        //                 // Send ListRooms message to chat server and wait for
+                        //                 // response
+                        //                 println!("List rooms");
+                        //                 self.addr
+                        //                     .send(server::ListRooms)
+                        //                     .into_actor(self)
+                        //                     .then(|res, _, ctx|
+                        //                         {
+                        //                             match res
+                        //                             {
+                        //                                 Ok(rooms) =>
+                        //                                     {
+                        //                                         for room in rooms
+                        //                                         {
+                        //                                             let response = WsResponse { text: room };
+                        //                                             ctx.text(serde_json::to_string(&response).unwrap());
+                        //                                         }
+                        //                                     }
+                        //                                 _ => println!("Something is wrong"),
+                        //                             }
+                        //                             fut::ready(())
+                        //                         })
+                        //                     .wait(ctx)
+                        //                 // .wait(ctx) pauses all events in context,
+                        //                 // so actor wont receive any new messages until it get list
+                        //                 // of rooms back
+                        //             },
+                        //         "/join" =>
+                        //             {
+                        //                 if v.len() == 2
+                        //                 {
+                        //                     self.room = v[1].to_owned();
+                        //                     self.addr.do_send(server::Join
+                        //                     {
+                        //                         id: self.id,
+                        //                         name: self.room.clone(),
+                        //                     });
+                        //
+                        //                     let response = WsResponse { text: "joined".to_owned() };
+                        //                     ctx.text(serde_json::to_string(&response).unwrap());
+                        //                 }
+                        //                 else
+                        //                 {
+                        //                     let response = WsResponse { text: "!!! room name is required".to_owned() };
+                        //                     ctx.text(serde_json::to_string(&response).unwrap());
+                        //                 }
+                        //             },
+                        //         "/name" =>
+                        //             {
+                        //                 if v.len() == 2
+                        //                 {
+                        //                     self.name = Some(v[1].to_owned());
+                        //                 }
+                        //                 else
+                        //                 {
+                        //                     let response = WsResponse { text: "!!! name is required".to_owned() };
+                        //                     ctx.text(serde_json::to_string(&response).unwrap());
+                        //                 }
+                        //             },
+                        //         _ =>
+                        //             {
+                        //                 let response = WsResponse { text: format!("!!! unknown command: {:?}", m).to_owned() };
+                        //                 ctx.text(serde_json::to_string(&response).unwrap());
+                        //             },
+                        //     }
+                        // }
+                        // else
+                        // {
+                        //     let msg = if let Some(ref name) = self.name
+                        //     {
+                        //         format!("{}: {}", name, m)
+                        //     }
+                        //     else
+                        //     {
+                        //         m.to_owned()
+                        //     };
+                        //     println!("{}", msg);
+                        //     // send message to chat server
+                        //     self.addr.do_send(server::ClientMessage
+                        //     {
+                        //         id: self.id,
+                        //         msg,
+                        //         room: self.room.clone(),
+                        //     })
+                        // }
+
                     }
                 },
             ws::Message::Binary(_) => println!("Unexpected binary"),
