@@ -4,11 +4,8 @@ use actix::*;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 
-use crate::checkers_game::chat::chat_models::{WsRequest, WsResponse};
+use crate::checkers_game::chat::chat_models::{WsRequest, WsResponse, Info};
 use serde_json;
-
-
-// mod server;
 
 use crate::checkers_game::chat::server;
 
@@ -42,17 +39,18 @@ pub async fn chat_route(req: HttpRequest, stream: web::Payload, srv: web::Data<A
 }
 
 
-fn insert_new_message(pool: web::Data<DbPool>, name: String, m: String)
+fn save_message_in_db(pool: web::Data<DbPool>, room: String, name: String, m: String)
 {
     let conn = pool.get().expect("couldn't get db connection from pool");
-    chat_database::insert_new_message(name.to_owned(), m.to_owned(), &conn);
+    chat_database::insert_new_message(room.to_owned(), name.to_owned(), m.to_owned(), &conn);
 }
 
 
-pub async fn extract_chat_log(pool: web::Data<DbPool>, _request: HttpRequest) -> Result<HttpResponse, Error>
+pub async fn extract_chat_log(pool: web::Data<DbPool>, info: web::Path<Info>, _request: HttpRequest) -> Result<HttpResponse, Error>
 {
+    let room = info.room.clone();
     let conn = pool.get().expect("couldn't get db connection from pool");
-    let all_messages = web::block(move || chat_database::extract_chat_log(&conn))
+    let all_messages = web::block(move || chat_database::extract_chat_log(room.to_owned(), &conn))
     .await
     .map_err(|e|
         {
@@ -79,6 +77,7 @@ struct WsChatSession
     /// db pool
     pool: web::Data<DbPool>
 }
+
 
 impl Actor for WsChatSession
 {
@@ -188,12 +187,21 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                     let response = WsResponse { text: "joined".to_owned() };
                                     ctx.text(serde_json::to_string(&response).unwrap());
                                 },
-                            "set_name" => self.name = Some(m.to_owned()),
+                            "set_name" =>
+                                {
+                                    self.name = Some(m.to_owned());
+                                    self.addr.do_send(server::SetUserName
+                                    {
+                                        id: self.id,
+                                        user_name: m.to_owned(),
+                                    });
+                                },
                             "send_message" =>
                                 {
                                     let msg = if let Some(ref name) = self.name
                                     {
-                                        insert_new_message(self.pool.clone(), name.to_owned(), m.to_owned());
+                                        let room = self.room.clone();
+                                        save_message_in_db(self.pool.clone(), room.to_owned(), name.to_owned(), m.to_owned());
                                         format!("{}: {}", name, m)
                                     }
                                     else
@@ -208,6 +216,33 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         msg,
                                         room: self.room.clone(),
                                     })
+                                },
+                            "users_online" =>
+                                {
+                                    self.addr
+                                        .send(server::ListUserNamesMessage
+                                        {
+                                            id: self.id,
+                                            room: self.room.clone()
+                                        })
+                                        .into_actor(self)
+                                        .then(|res, _, ctx|
+                                            {
+                                                match res
+                                                {
+                                                    Ok(user_names) =>
+                                                        {
+                                                            for user_name in user_names
+                                                            {
+                                                                let response = WsResponse { text: user_name };
+                                                                ctx.text(serde_json::to_string(&response).unwrap());
+                                                            }
+                                                        }
+                                                    _ => println!("Something is wrong"),
+                                                }
+                                                fut::ready(())
+                                            })
+                                        .wait(ctx)
                                 },
                             _ =>
                                 {
@@ -310,6 +345,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                         //         room: self.room.clone(),
                         //     })
                         // }
+
 
                     }
                 },

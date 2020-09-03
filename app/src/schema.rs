@@ -1,6 +1,7 @@
 table! {
     checkers_game_chat (id) {
         id -> Int4,
+        chat_room -> Varchar,
         user_name -> Varchar,
         message -> Varchar,
     }

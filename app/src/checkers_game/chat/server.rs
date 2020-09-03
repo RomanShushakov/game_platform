@@ -71,11 +71,42 @@ pub struct Join
 }
 
 
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct SetUserName
+{
+    /// Client id
+    pub id: usize,
+    /// User name
+    pub user_name: String,
+}
+
+
+#[derive(Message)]
+#[rtype(result = "Vec<String>")]
+pub struct ListUserNamesMessage
+{
+    /// Id of the client session
+    pub id: usize,
+    /// Room name
+    pub room: String,
+}
+
+
+// pub struct ListUserNames;
+
+
+// impl actix::Message for ListUserNamesMessage
+// {
+//     type Result = Vec<String>;
+// }
+
+
 /// `ChatServer` manages chat rooms and responsible for coordinating chat
 /// session. implementation is super primitive
 pub struct ChatServer
 {
-    sessions: HashMap<usize, Recipient<Message>>,
+    sessions: HashMap<usize, (Recipient<Message>, Option<String>)>,
     rooms: HashMap<String, HashSet<usize>>,
     rng: ThreadRng,
 }
@@ -112,10 +143,10 @@ impl ChatServer
                 {
                     if let Some(addr) = self.sessions.get(id)
                     {
-
+                        println!("{:?}", addr.1);
                         let response = WsResponse { text: message.to_owned() };
                         let m = serde_json::to_string(&response).unwrap();
-                        let _ = addr.do_send(Message(m));
+                        let _ = addr.0.do_send(Message(m));
 
                         // let _ = addr.do_send(Message(message.to_owned()));
                     }
@@ -151,7 +182,7 @@ impl Handler<Connect> for ChatServer
 
         // register session with random id
         let id = self.rng.gen::<usize>();
-        self.sessions.insert(id, msg.addr);
+        self.sessions.insert(id, (msg.addr, None));
 
         // auto join session to Main room
         self.rooms
@@ -259,5 +290,50 @@ impl Handler<Join> for ChatServer
             .insert(id);
 
         self.send_message(&name, "Someone connected", id);
+    }
+}
+
+
+impl Handler<SetUserName> for ChatServer
+{
+    type Result = ();
+
+    fn handle(&mut self, msg: SetUserName, _: &mut Context<Self>)
+    {
+        if let Some(r) = self.sessions.clone().get(&msg.id)
+        {
+            self.sessions.insert(msg.id, (r.0.clone(), Some(msg.user_name.to_string())));
+        }
+    }
+}
+
+
+impl Handler<ListUserNamesMessage> for ChatServer
+{
+    type Result = MessageResult<ListUserNamesMessage>;
+
+    fn handle(&mut self, msg: ListUserNamesMessage, _: &mut Context<Self>) -> Self::Result
+    {
+        let mut user_names = Vec::new();
+
+        if let Some(required_sessions) = self.rooms.get(&msg.room)
+        {
+            for id in required_sessions
+            {
+                if *id != msg.id
+                {
+                    if let Some(session) = self.sessions.get(&id)
+                    {
+                        if let Some(user_name) = &session.1
+                        {
+                            user_names.push(user_name.to_owned())
+                        }
+
+
+                    }
+                }
+            }
+        }
+        MessageResult(user_names)
     }
 }

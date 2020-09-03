@@ -460,7 +460,7 @@ async fn main() -> std::io::Result<()>
 
                 .service(web::resource("/ws/").to(chat_route))
 
-                .route("/checkers_game/chat/extract_log", web::get().to(extract_chat_log))
+                .route("/chat/extract_log/{room}", web::get().to(extract_chat_log))
 
                 // .service(Files::new("", "./web_layout/obsolete").index_file("index.html"))
                 .service(Files::new("", "./web_layout").index_file("index.html"))

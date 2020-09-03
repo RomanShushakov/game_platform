@@ -22,6 +22,7 @@ pub struct WsResponse
 #[table_name="checkers_game_chat"]
 pub struct ChatMessage
 {
+    pub chat_room: String,
     pub user_name: String,
     pub message: String
 }
@@ -31,6 +32,14 @@ pub struct ChatMessage
 pub struct ChatMessageResponse
 {
     pub id: i32,
+    pub chat_room: String,
     pub user_name: String,
     pub message: String
+}
+
+
+#[derive(Deserialize)]
+pub struct Info
+{
+    pub room: String,
 }

@@ -79,7 +79,7 @@ impl CheckersGame
     }
 
 
-    fn show_chat_log(&self) -> FetchTask
+    fn extract_chat_log(&self) -> FetchTask
     {
         let callback: FetchCallback<Vec<ChatMessageResponse>> = self.link.callback(
             move |response: FetchResponse<Vec<ChatMessageResponse>>|
@@ -95,7 +95,7 @@ impl CheckersGame
                     }
                 },
         );
-        let request = Request::get("/checkers_game/chat/extract_log")
+        let request = Request::get("/chat/extract_log/checkers_game")
             .body(Nothing).unwrap();
         FetchService::fetch(request, callback).unwrap()
     }
@@ -107,8 +107,25 @@ impl CheckersGame
         {
             for message in messages
             {
-                let message_to_add = format!("{}: {}", message.user_name, message.message);
-                self.add_message_to_content(message_to_add);
+                let processed_message =
+                    {
+                        if let Some(user) = &self.props.user
+                        {
+                            if user.user_name == message.user_name
+                            {
+                                format!("you: {}", message.message)
+                            }
+                            else
+                            {
+                                format!("{}: {}", message.user_name, message.message)
+                            }
+                        }
+                        else
+                        {
+                            format!("{}: {}", message.user_name, message.message)
+                        }
+                    };
+                self.add_message_to_content(processed_message);
             }
         }
     }
@@ -139,9 +156,8 @@ pub enum Msg
     DefineButton(u32),
     WsAction(WsAction),
     WsReady(Result<WsResponse, Error>),
-    // WsReady(Result<String, Error>),
     Ignore,
-    ShowChatLog,
+    ExtractChatLog,
     ChatLogReceived(Result<Vec<ChatMessageResponse>, Error>),
     ChatLogNotReceived,
 }
@@ -181,6 +197,9 @@ impl Component for CheckersGame
                 {
                     let set_name_request = WsRequest { action: "set_name".to_owned(), text: format!("{}", user.user_name) };
                     self.ws.as_mut().unwrap().send(Json(&set_name_request));
+
+                    let online_users_request = WsRequest { action: "users_online".to_owned(), text: format!("{}", user.user_name) };
+                    self.ws.as_mut().unwrap().send(Json(&online_users_request));
                 }
                 self.state.is_chat_room_defined = true;
             }
@@ -225,7 +244,7 @@ impl Component for CheckersGame
                                         {
                                             if let Some(_) = &self.props.user
                                             {
-                                                self.add_message_to_content(format!("You: {}", message));
+                                                self.add_message_to_content(format!("you: {}", message));
                                             }
                                             else
                                             {
@@ -260,9 +279,9 @@ impl Component for CheckersGame
                     }
                     else { return false; }
                 },
-            Msg::ShowChatLog =>
+            Msg::ExtractChatLog =>
                 {
-                    let task = self.show_chat_log();
+                    let task = self.extract_chat_log();
                     self.fetch_task = Some(task);
                 },
             Msg::ChatLogReceived(response) =>
@@ -347,6 +366,16 @@ impl Component for CheckersGame
                             html! { <button disabled=true>{ "Send" }</button> }
                         }
                     }
+
+                    <div class="checkers_game_online_users">
+                        // {
+                        //     for self.state.chat_messages.iter().map(|chat_message: &ChatMessage|
+                        //     {
+                        //         html! { <> { &chat_message.message } <br /> </>  }
+                        //     })
+                        // }
+                    </div>
+
                 </div>
             </main>
         }
@@ -357,7 +386,7 @@ impl Component for CheckersGame
     {
         if first_render
         {
-            self.link.send_message(Msg::ShowChatLog);
+            self.link.send_message(Msg::ExtractChatLog);
             self.link.send_message(WsAction::Connect);
         }
 

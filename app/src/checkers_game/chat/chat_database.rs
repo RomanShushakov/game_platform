@@ -2,12 +2,13 @@ use diesel::prelude::*;
 use crate::checkers_game::chat::chat_models;
 
 
-pub fn insert_new_message(name: String, m: String, conn: &PgConnection)
+pub fn insert_new_message(room: String, name: String, m: String, conn: &PgConnection)
 {
     use crate::schema::checkers_game_chat::dsl::*;
 
     let new_message = chat_models::ChatMessage
     {
+        chat_room: room,
         user_name: name,
         message: m,
     };
@@ -20,11 +21,12 @@ pub fn insert_new_message(name: String, m: String, conn: &PgConnection)
 }
 
 
-pub fn extract_chat_log(conn: &PgConnection) -> Result<Option<Vec<chat_models::ChatMessageResponse>>, diesel::result::Error>
+pub fn extract_chat_log(room: String, conn: &PgConnection) -> Result<Option<Vec<chat_models::ChatMessageResponse>>, diesel::result::Error>
 {
     use crate::schema::checkers_game_chat::dsl::*;
 
     let all_messages = checkers_game_chat
+        .filter(chat_room.eq(room))
         .load::<chat_models::ChatMessageResponse>(conn)
         .optional()?;
     Ok(all_messages)
