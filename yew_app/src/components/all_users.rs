@@ -173,18 +173,19 @@ impl Component for AllUsers
                             {
                                 <>
                                     <h3>{ "All users" }</h3>
-                                    <table id="tags_table" border="1" style="border-collapse: collapse;">
+                                    <table border="1" style="border-collapse: collapse;">
                                         <thead>
-                                        <tr>
-                                            <th>{ "User name" }</th>
-                                            <th>{ "Email" }</th>
-                                            <th>{ "Is active" }</th>
-                                            <th>{ "Action" }</th>
-                                        </tr>
+                                            <tr>
+                                                <th>{ "User name" }</th>
+                                                <th>{ "Email" }</th>
+                                                <th>{ "Is active" }</th>
+                                                <th>{ "Action" }</th>
+                                            </tr>
                                         </thead>
                                         <tbody>
                                         {
-                                            for users.iter().map(|user: &UserForAllUsersResponse| html!
+                                            for users.iter().map(|user: &UserForAllUsersResponse|
+                                            html!
                                             {
                                                 <tr>
                                                     <td>{ user.user_name.to_string() }</td>

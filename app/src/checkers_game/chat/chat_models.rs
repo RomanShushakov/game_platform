@@ -7,14 +7,15 @@ use crate::schema::checkers_game_chat;
 pub struct WsRequest
 {
     pub action: String,
-    pub text: String,
+    pub data: String,
 }
 
 
 #[derive(Serialize, Debug)]
 pub struct WsResponse
 {
-    pub text: String,
+    pub action: String,
+    pub data: String,
 }
 
 

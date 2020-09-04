@@ -49,16 +49,6 @@ pub struct ClientMessage
 }
 
 
-/// List of available rooms
-pub struct ListRooms;
-
-
-impl actix::Message for ListRooms
-{
-    type Result = Vec<String>;
-}
-
-
 /// Join room, if room does not exists create new one.
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -84,7 +74,7 @@ pub struct SetUserName
 
 #[derive(Message)]
 #[rtype(result = "Vec<String>")]
-pub struct ListUserNamesMessage
+pub struct ListUserNames
 {
     /// Id of the client session
     pub id: usize,
@@ -93,13 +83,14 @@ pub struct ListUserNamesMessage
 }
 
 
-// pub struct ListUserNames;
-
-
-// impl actix::Message for ListUserNamesMessage
-// {
-//     type Result = Vec<String>;
-// }
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Invitation
+{
+    pub id: usize,
+    pub to_user: String,
+    pub room: String,
+}
 
 
 /// `ChatServer` manages chat rooms and responsible for coordinating chat
@@ -133,7 +124,7 @@ impl Default for ChatServer
 impl ChatServer
 {
     /// Send message to all users in the room
-    fn send_message(&self, room: &str, message: &str, skip_id: usize)
+    fn send_message(&self, room: &str, action: &str, message: &str, skip_id: usize)
     {
         if let Some(sessions) = self.rooms.get(room)
         {
@@ -143,12 +134,34 @@ impl ChatServer
                 {
                     if let Some(addr) = self.sessions.get(id)
                     {
-                        println!("{:?}", addr.1);
-                        let response = WsResponse { text: message.to_owned() };
+                        let response = WsResponse { action: action.to_owned(), data: message.to_owned() };
                         let m = serde_json::to_string(&response).unwrap();
                         let _ = addr.0.do_send(Message(m));
 
                         // let _ = addr.do_send(Message(message.to_owned()));
+                    }
+                }
+            }
+        }
+    }
+
+
+    fn send_invitation(&self, room: &str, from_user: &str, to_user: &str)
+    {
+        if let Some(sessions) = self.rooms.get(room)
+        {
+            for id in sessions
+            {
+                if let Some(addr) = self.sessions.get(id)
+                {
+                    if let Some(user_name) = &addr.1
+                    {
+                        if user_name == to_user
+                        {
+                            let response = WsResponse { action: "invitation".to_owned(), data: from_user.to_owned() };
+                            let m = serde_json::to_string(&response).unwrap();
+                            let _ = addr.0.do_send(Message(m));
+                        }
                     }
                 }
             }
@@ -178,7 +191,7 @@ impl Handler<Connect> for ChatServer
         println!("Someone joined");
 
         // notify all users in same room
-        self.send_message(&"Main".to_owned(), "Someone joined", 0);
+        self.send_message(&"Main".to_owned(), "connect", "Someone joined", 0);
 
         // register session with random id
         let id = self.rng.gen::<usize>();
@@ -222,7 +235,7 @@ impl Handler<Disconnect> for ChatServer
         // send message to other users
         for room in rooms
         {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.send_message(&room, "disconnect", "Someone disconnected", 0);
         }
     }
 }
@@ -235,26 +248,7 @@ impl Handler<ClientMessage> for ChatServer
 
     fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>)
     {
-        self.send_message(&msg.room, msg.msg.as_str(), msg.id);
-    }
-}
-
-
-/// Handler for `ListRooms` message.
-impl Handler<ListRooms> for ChatServer
-{
-    type Result = MessageResult<ListRooms>;
-
-    fn handle(&mut self, _: ListRooms, _: &mut Context<Self>) -> Self::Result
-    {
-        let mut rooms = Vec::new();
-
-        for key in self.rooms.keys()
-        {
-            rooms.push(key.to_owned())
-        }
-
-        MessageResult(rooms)
+        self.send_message(&msg.room, "send_message", msg.msg.as_str(),  msg.id);
     }
 }
 
@@ -281,7 +275,7 @@ impl Handler<Join> for ChatServer
         // send message to other users
         for room in rooms
         {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.send_message(&room, "disconnect", "Someone disconnected", 0);
         }
 
         self.rooms
@@ -289,7 +283,7 @@ impl Handler<Join> for ChatServer
             .or_insert(HashSet::new())
             .insert(id);
 
-        self.send_message(&name, "Someone connected", id);
+        self.send_message(&name, "connect", "Someone connected", id);
     }
 }
 
@@ -300,19 +294,19 @@ impl Handler<SetUserName> for ChatServer
 
     fn handle(&mut self, msg: SetUserName, _: &mut Context<Self>)
     {
-        if let Some(r) = self.sessions.clone().get(&msg.id)
+        if let Some(session) = self.sessions.clone().get(&msg.id)
         {
-            self.sessions.insert(msg.id, (r.0.clone(), Some(msg.user_name.to_string())));
+            self.sessions.insert(msg.id, (session.0.clone(), Some(msg.user_name.to_string())));
         }
     }
 }
 
 
-impl Handler<ListUserNamesMessage> for ChatServer
+impl Handler<ListUserNames> for ChatServer
 {
-    type Result = MessageResult<ListUserNamesMessage>;
+    type Result = MessageResult<ListUserNames>;
 
-    fn handle(&mut self, msg: ListUserNamesMessage, _: &mut Context<Self>) -> Self::Result
+    fn handle(&mut self, msg: ListUserNames, _: &mut Context<Self>) -> Self::Result
     {
         let mut user_names = Vec::new();
 
@@ -328,12 +322,31 @@ impl Handler<ListUserNamesMessage> for ChatServer
                         {
                             user_names.push(user_name.to_owned())
                         }
-
-
                     }
                 }
             }
         }
         MessageResult(user_names)
+    }
+}
+
+
+/// Join room, send disconnect message to old room
+/// send join message to new room
+impl Handler<Invitation> for ChatServer
+{
+    type Result = ();
+
+    fn handle(&mut self, msg: Invitation, _: &mut Context<Self>)
+    {
+        if let Some(session) = self.sessions.clone().get(&msg.id)
+        {
+            if let Some(user_name) = &session.1
+            {
+                self.send_invitation(&msg.room, &user_name, &msg.to_user);
+            }
+        }
+
+
     }
 }

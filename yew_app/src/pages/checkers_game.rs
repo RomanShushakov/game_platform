@@ -27,21 +27,19 @@ pub struct Props
 struct WsRequest
 {
     action: String,
-    text: String,
+    data: String,
 }
 
 
 #[derive(Deserialize, Debug)]
 pub struct WsResponse
 {
-    text: String,
+    action: String,
+    data: String,
 }
 
 
-struct ChatMessage
-{
-    message: String
-}
+struct ChatMessage(String);
 
 
 #[derive(Deserialize)]
@@ -52,12 +50,21 @@ pub struct ChatMessageResponse
 }
 
 
+struct Invitation
+{
+    from: String
+}
+
 struct State
 {
     message: Option<String>,
     chat_messages: Vec<ChatMessage>,
+    online_users: Vec<ChatMessage>,
     is_connected: bool,
     is_chat_room_defined: bool,
+    is_invitation_sent: bool,
+    is_invitation_received: bool,
+    invitation: Option<Invitation>,
 }
 
 
@@ -75,7 +82,19 @@ impl CheckersGame
 {
     fn add_message_to_content(&mut self, message: String)
     {
-        self.state.chat_messages.push(ChatMessage { message });
+        if message == "Someone disconnected" || message == "Someone connected"
+        {
+            if let Some(_) = &self.ws
+            {
+                self.state.online_users = Vec::new();
+                let online_users_request = WsRequest { action: "users_online".to_owned(), data: "".to_owned() };
+                self.ws.as_mut().unwrap().send(Json(&online_users_request));
+            }
+        }
+        else
+        {
+            self.state.chat_messages.push(ChatMessage(message));
+        }
     }
 
 
@@ -129,6 +148,12 @@ impl CheckersGame
             }
         }
     }
+
+
+    fn add_online_user(&mut self, user: String)
+    {
+        self.state.online_users.push(ChatMessage(user));
+    }
 }
 
 
@@ -138,6 +163,7 @@ pub enum WsAction
     SendData,
     Disconnect,
     Lost,
+    SendInvitation(String),
 }
 
 
@@ -176,8 +202,9 @@ impl Component for CheckersGame
             link, props,
             state: State
                 {
-                    message: None, chat_messages: Vec::new(),
-                    is_connected: false, is_chat_room_defined: false
+                    message: None, chat_messages: Vec::new(), online_users: Vec::new(),
+                    is_connected: false, is_chat_room_defined: false,
+                    is_invitation_sent: false, is_invitation_received: false, invitation: None
                 },
             ws: None, fetch_task: None
         }
@@ -190,15 +217,15 @@ impl Component for CheckersGame
         {
             if !self.state.is_chat_room_defined
             {
-                let join_to_room_request = WsRequest { action: "join_to_room".to_owned(), text: "checkers_game".to_owned() };
+                let join_to_room_request = WsRequest { action: "join_to_room".to_owned(), data: "checkers_game".to_owned() };
                 self.ws.as_mut().unwrap().send(Json(&join_to_room_request));
 
                 if let Some(user) = &self.props.user
                 {
-                    let set_name_request = WsRequest { action: "set_name".to_owned(), text: format!("{}", user.user_name) };
+                    let set_name_request = WsRequest { action: "set_name".to_owned(), data: format!("{}", user.user_name) };
                     self.ws.as_mut().unwrap().send(Json(&set_name_request));
 
-                    let online_users_request = WsRequest { action: "users_online".to_owned(), text: format!("{}", user.user_name) };
+                    let online_users_request = WsRequest { action: "users_online".to_owned(), data: format!("{}", user.user_name) };
                     self.ws.as_mut().unwrap().send(Json(&online_users_request));
                 }
                 self.state.is_chat_room_defined = true;
@@ -251,7 +278,7 @@ impl Component for CheckersGame
                                                 self.add_message_to_content(message.to_owned());
                                             }
 
-                                            let request = WsRequest { action: "send_message".to_owned(), text: message.to_owned() };
+                                            let request = WsRequest { action: "send_message".to_owned(), data: message.to_owned() };
                                             self.ws.as_mut().unwrap().send(Json(&request));
 
                                             self.state.message = None;
@@ -262,10 +289,19 @@ impl Component for CheckersGame
                                 }
                                 else { return false; }
                             },
+                        WsAction::SendInvitation(to_user) =>
+                            {
+                                let request = WsRequest { action: "invitation".to_owned(), data: to_user.to_owned() };
+                                self.ws.as_mut().unwrap().send(Json(&request));
+
+                                self.state.is_invitation_sent = true;
+                            },
+
                         WsAction::Disconnect =>
                             {
                                 self.ws.take();
                                 self.state.is_connected = false;
+                                self.state.online_users = Vec::new();
                             },
                         WsAction::Lost => { self.ws = None; },
                     }
@@ -273,9 +309,18 @@ impl Component for CheckersGame
             Msg::Ignore => { return false; },
             Msg::WsReady(response) =>
                 {
-                    if let Some(received_data) = response.map(|data| data.text).ok()
+                    // if let Some(received_data) = response.map(|data| data).ok()
+                    if let Some(received_data) = response.ok()
                     {
-                        self.add_message_to_content(received_data);
+                        if received_data.action == "users_online_response"
+                        {
+                            self.add_online_user(received_data.data);
+                        }
+                        else
+                        {
+                            self.add_message_to_content(received_data.data);
+                        }
+
                     }
                     else { return false; }
                 },
@@ -330,7 +375,7 @@ impl Component for CheckersGame
                         {
                             for self.state.chat_messages.iter().map(|chat_message: &ChatMessage|
                             {
-                                html! { <> { &chat_message.message } <br /> </>  }
+                                html! { <> { &chat_message.0 } <br /> </>  }
                             })
                         }
                     </div>
@@ -354,7 +399,7 @@ impl Component for CheckersGame
                         {
                             if self.state.is_connected
                             {
-                                html! { <button type="reset" onclick=self.link.callback(|_| WsAction::SendData)>{ "Send" }</button> }
+                                html! { <button onclick=self.link.callback(|_| WsAction::SendData)>{ "Send" }</button> }
                             }
                             else
                             {
@@ -367,15 +412,48 @@ impl Component for CheckersGame
                         }
                     }
 
+                    <h3>{ "Users online" }</h3>
                     <div class="checkers_game_online_users">
-                        // {
-                        //     for self.state.chat_messages.iter().map(|chat_message: &ChatMessage|
-                        //     {
-                        //         html! { <> { &chat_message.message } <br /> </>  }
-                        //     })
-                        // }
-                    </div>
+                        <table>
+                            // <thead>
+                            //     <tr>
+                            //         <th>{ "User name" }</th>
+                            //     </tr>
+                            // </thead>
+                            <tbody>
+                            {
+                                for self.state.online_users.iter().map(|chat_message: &ChatMessage|
+                                html!
+                                {
+                                    <tr>
+                                        <td>{ &chat_message.0 }</td>
+                                        <td>
+                                            {
+                                                if true
+                                                {
+                                                    let user_name = chat_message.0.to_string();
+                                                    html!
+                                                    {
+                                                        <button
+                                                            onclick=self.link.callback(move |_| WsAction::SendInvitation(user_name.clone()))
+                                                            disabled=self.state.is_invitation_sent>
+                                                            { "invite to play" }
+                                                        </button>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    html! {  }
+                                                }
+                                            }
 
+                                        </td>
+                                    </tr>
+                                })
+                            }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </main>
         }

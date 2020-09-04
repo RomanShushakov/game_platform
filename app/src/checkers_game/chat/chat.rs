@@ -170,30 +170,30 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                     let received_request: Result<WsRequest, _> = serde_json::from_str(&text);
                     if let Ok(request) = received_request
                     {
-                        let act = request.action.trim();
-                        let m = request.text.trim();
+                        let action = request.action.trim();
+                        let data = request.data.trim();
 
-                        match act
+                        match action
                         {
                             "join_to_room" =>
                                 {
-                                    self.room = m.to_owned();
+                                    self.room = data.to_owned();
                                     self.addr.do_send(server::Join
                                     {
                                         id: self.id,
                                         name: self.room.clone(),
                                     });
 
-                                    let response = WsResponse { text: "joined".to_owned() };
+                                    let response = WsResponse { action: "join_to_room".to_owned(),  data: "joined".to_owned() };
                                     ctx.text(serde_json::to_string(&response).unwrap());
                                 },
                             "set_name" =>
                                 {
-                                    self.name = Some(m.to_owned());
+                                    self.name = Some(data.to_owned());
                                     self.addr.do_send(server::SetUserName
                                     {
                                         id: self.id,
-                                        user_name: m.to_owned(),
+                                        user_name: data.to_owned(),
                                     });
                                 },
                             "send_message" =>
@@ -201,12 +201,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                     let msg = if let Some(ref name) = self.name
                                     {
                                         let room = self.room.clone();
-                                        save_message_in_db(self.pool.clone(), room.to_owned(), name.to_owned(), m.to_owned());
-                                        format!("{}: {}", name, m)
+                                        save_message_in_db(self.pool.clone(), room.to_owned(), name.to_owned(), data.to_owned());
+                                        format!("{}: {}", name, data)
                                     }
                                     else
                                     {
-                                        m.to_owned()
+                                        data.to_owned()
                                     };
                                     println!("{}", msg);
                                     // send message to chat server
@@ -220,7 +220,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                             "users_online" =>
                                 {
                                     self.addr
-                                        .send(server::ListUserNamesMessage
+                                        .send(server::ListUserNames
                                         {
                                             id: self.id,
                                             room: self.room.clone()
@@ -234,7 +234,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                                         {
                                                             for user_name in user_names
                                                             {
-                                                                let response = WsResponse { text: user_name };
+                                                                let response = WsResponse { action: "users_online_response".to_owned(), data: user_name };
                                                                 ctx.text(serde_json::to_string(&response).unwrap());
                                                             }
                                                         }
@@ -244,109 +244,21 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                             })
                                         .wait(ctx)
                                 },
+                            "invitation" =>
+                                {
+                                    self.addr.do_send(server::Invitation
+                                    {
+                                        id: self.id,
+                                        to_user: data.to_owned(),
+                                        room: self.room.clone(),
+                                    });
+                                }
                             _ =>
                                 {
-                                    let response = WsResponse { text: format!("!!! unknown command: {:?}", m).to_owned() };
+                                    let response = WsResponse { action: "unknown".to_owned(), data: format!("!!! unknown command: {:?}", data).to_owned() };
                                     ctx.text(serde_json::to_string(&response).unwrap());
                                 }
                         }
-
-
-                        // // we check for /sss type of messages
-                        // if m.starts_with('/')
-                        // {
-                        //     let v: Vec<&str> = m.splitn(2, ' ').collect();
-                        //     match v[0]
-                        //     {
-                        //         "/list" =>
-                        //             {
-                        //                 // Send ListRooms message to chat server and wait for
-                        //                 // response
-                        //                 println!("List rooms");
-                        //                 self.addr
-                        //                     .send(server::ListRooms)
-                        //                     .into_actor(self)
-                        //                     .then(|res, _, ctx|
-                        //                         {
-                        //                             match res
-                        //                             {
-                        //                                 Ok(rooms) =>
-                        //                                     {
-                        //                                         for room in rooms
-                        //                                         {
-                        //                                             let response = WsResponse { text: room };
-                        //                                             ctx.text(serde_json::to_string(&response).unwrap());
-                        //                                         }
-                        //                                     }
-                        //                                 _ => println!("Something is wrong"),
-                        //                             }
-                        //                             fut::ready(())
-                        //                         })
-                        //                     .wait(ctx)
-                        //                 // .wait(ctx) pauses all events in context,
-                        //                 // so actor wont receive any new messages until it get list
-                        //                 // of rooms back
-                        //             },
-                        //         "/join" =>
-                        //             {
-                        //                 if v.len() == 2
-                        //                 {
-                        //                     self.room = v[1].to_owned();
-                        //                     self.addr.do_send(server::Join
-                        //                     {
-                        //                         id: self.id,
-                        //                         name: self.room.clone(),
-                        //                     });
-                        //
-                        //                     let response = WsResponse { text: "joined".to_owned() };
-                        //                     ctx.text(serde_json::to_string(&response).unwrap());
-                        //                 }
-                        //                 else
-                        //                 {
-                        //                     let response = WsResponse { text: "!!! room name is required".to_owned() };
-                        //                     ctx.text(serde_json::to_string(&response).unwrap());
-                        //                 }
-                        //             },
-                        //         "/name" =>
-                        //             {
-                        //                 if v.len() == 2
-                        //                 {
-                        //                     self.name = Some(v[1].to_owned());
-                        //                 }
-                        //                 else
-                        //                 {
-                        //                     let response = WsResponse { text: "!!! name is required".to_owned() };
-                        //                     ctx.text(serde_json::to_string(&response).unwrap());
-                        //                 }
-                        //             },
-                        //         _ =>
-                        //             {
-                        //                 let response = WsResponse { text: format!("!!! unknown command: {:?}", m).to_owned() };
-                        //                 ctx.text(serde_json::to_string(&response).unwrap());
-                        //             },
-                        //     }
-                        // }
-                        // else
-                        // {
-                        //     let msg = if let Some(ref name) = self.name
-                        //     {
-                        //         format!("{}: {}", name, m)
-                        //     }
-                        //     else
-                        //     {
-                        //         m.to_owned()
-                        //     };
-                        //     println!("{}", msg);
-                        //     // send message to chat server
-                        //     self.addr.do_send(server::ClientMessage
-                        //     {
-                        //         id: self.id,
-                        //         msg,
-                        //         room: self.room.clone(),
-                        //     })
-                        // }
-
-
                     }
                 },
             ws::Message::Binary(_) => println!("Unexpected binary"),
