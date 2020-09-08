@@ -264,6 +264,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         action: action.to_owned(),
                                     });
                                 },
+                            "accept_invitation" =>
+                                {
+                                    self.addr.do_send(server::Invitation
+                                    {
+                                        id: self.id,
+                                        to_user: data.to_owned(),
+                                        room: self.room.clone(),
+                                        action: action.to_owned(),
+                                    });
+                                },
                             _ =>
                                 {
                                     let response = WsResponse

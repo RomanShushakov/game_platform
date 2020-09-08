@@ -58,3 +58,27 @@ pub struct UserChangeStatusRequest
 {
     pub uid: String,
 }
+
+
+#[derive(Serialize, Debug)]
+pub struct WsRequest
+{
+    pub action: String,
+    pub data: String,
+}
+
+
+#[derive(Deserialize, Debug)]
+pub struct WsResponse
+{
+    pub action: String,
+    pub data: String,
+}
+
+
+#[derive(Deserialize)]
+pub struct ChatMessageResponse
+{
+    pub user_name: String,
+    pub message: String
+}

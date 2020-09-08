@@ -94,11 +94,19 @@ pub struct Invitation
 }
 
 
+#[derive(Clone)]
+struct SessionData
+{
+    recipient: Recipient<Message>,
+    user_name: Option<String>,
+}
+
+
 /// `ChatServer` manages chat rooms and responsible for coordinating chat
 /// session. implementation is super primitive
 pub struct ChatServer
 {
-    sessions: HashMap<usize, (Recipient<Message>, Option<String>)>,
+    sessions: HashMap<usize, SessionData>,
     rooms: HashMap<String, HashSet<usize>>,
     rng: ThreadRng,
 }
@@ -137,9 +145,7 @@ impl ChatServer
                     {
                         let response = WsResponse { action: action.to_owned(), data: message.to_owned() };
                         let m = serde_json::to_string(&response).unwrap();
-                        let _ = addr.0.do_send(Message(m));
-
-                        // let _ = addr.do_send(Message(message.to_owned()));
+                        let _ = addr.recipient.do_send(Message(m));
                     }
                 }
             }
@@ -155,13 +161,13 @@ impl ChatServer
             {
                 if let Some(addr) = self.sessions.get(id)
                 {
-                    if let Some(user_name) = &addr.1
+                    if let Some(user_name) = &addr.user_name
                     {
                         if user_name == to_user
                         {
                             let response = WsResponse { action: action.to_owned(), data: from_user.to_owned() };
                             let m = serde_json::to_string(&response).unwrap();
-                            let _ = addr.0.do_send(Message(m));
+                            let _ = addr.recipient.do_send(Message(m));
                         }
                     }
                 }
@@ -196,7 +202,11 @@ impl Handler<Connect> for ChatServer
 
         // register session with random id
         let id = self.rng.gen::<usize>();
-        self.sessions.insert(id, (msg.addr, None));
+        self.sessions.insert(
+            id,
+            SessionData { recipient: msg.addr, user_name: None }
+        );
+
 
         // auto join session to Main room
         self.rooms
@@ -297,7 +307,10 @@ impl Handler<SetUserName> for ChatServer
     {
         if let Some(session) = self.sessions.clone().get(&msg.id)
         {
-            self.sessions.insert(msg.id, (session.0.clone(), Some(msg.user_name.to_string())));
+            self.sessions.insert(
+                msg.id,
+                SessionData { recipient: session.recipient.clone(), user_name: Some(msg.user_name.to_owned()) }
+            );
         }
     }
 }
@@ -319,7 +332,7 @@ impl Handler<ListUserNames> for ChatServer
                 {
                     if let Some(session) = self.sessions.get(&id)
                     {
-                        if let Some(user_name) = &session.1
+                        if let Some(user_name) = &session.user_name
                         {
                             user_names.push(user_name.to_owned())
                         }
@@ -340,7 +353,7 @@ impl Handler<Invitation> for ChatServer
     {
         if let Some(session) = self.sessions.clone().get(&msg.id)
         {
-            if let Some(user_name) = &session.1
+            if let Some(user_name) = &session.user_name
             {
                 self.process_invitation(&msg.room, &user_name, &msg.to_user, &msg.action);
             }
