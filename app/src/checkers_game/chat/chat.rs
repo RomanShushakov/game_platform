@@ -251,11 +251,26 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         id: self.id,
                                         to_user: data.to_owned(),
                                         room: self.room.clone(),
+                                        action: action.to_owned(),
                                     });
-                                }
+                                },
+                            "decline_invitation" =>
+                                {
+                                    self.addr.do_send(server::Invitation
+                                    {
+                                        id: self.id,
+                                        to_user: data.to_owned(),
+                                        room: self.room.clone(),
+                                        action: action.to_owned(),
+                                    });
+                                },
                             _ =>
                                 {
-                                    let response = WsResponse { action: "unknown".to_owned(), data: format!("!!! unknown command: {:?}", data).to_owned() };
+                                    let response = WsResponse
+                                        {
+                                            action: "unknown".to_owned(),
+                                            data: format!("!!! unknown command: {:?}", data).to_owned()
+                                        };
                                     ctx.text(serde_json::to_string(&response).unwrap());
                                 }
                         }

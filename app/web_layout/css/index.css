@@ -149,3 +149,11 @@ h3 {
     overflow: auto;
     border: 1px solid black;
 }
+
+
+.checkers_game_invitation {
+    width: 20rem;
+    height: 15rem;
+    overflow: auto;
+    border: 1px solid black;
+}

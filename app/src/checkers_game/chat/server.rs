@@ -90,6 +90,7 @@ pub struct Invitation
     pub id: usize,
     pub to_user: String,
     pub room: String,
+    pub action: String,
 }
 
 
@@ -146,7 +147,7 @@ impl ChatServer
     }
 
 
-    fn send_invitation(&self, room: &str, from_user: &str, to_user: &str)
+    fn process_invitation(&self, room: &str, from_user: &str, to_user: &str, action: &str)
     {
         if let Some(sessions) = self.rooms.get(room)
         {
@@ -158,7 +159,7 @@ impl ChatServer
                     {
                         if user_name == to_user
                         {
-                            let response = WsResponse { action: "invitation".to_owned(), data: from_user.to_owned() };
+                            let response = WsResponse { action: action.to_owned(), data: from_user.to_owned() };
                             let m = serde_json::to_string(&response).unwrap();
                             let _ = addr.0.do_send(Message(m));
                         }
@@ -331,8 +332,6 @@ impl Handler<ListUserNames> for ChatServer
 }
 
 
-/// Join room, send disconnect message to old room
-/// send join message to new room
 impl Handler<Invitation> for ChatServer
 {
     type Result = ();
@@ -343,10 +342,8 @@ impl Handler<Invitation> for ChatServer
         {
             if let Some(user_name) = &session.1
             {
-                self.send_invitation(&msg.room, &user_name, &msg.to_user);
+                self.process_invitation(&msg.room, &user_name, &msg.to_user, &msg.action);
             }
         }
-
-
     }
 }
