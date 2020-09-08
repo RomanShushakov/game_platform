@@ -494,7 +494,7 @@ impl Component for CheckersGame
                                             {
                                                 if true
                                                 {
-                                                    let user_name = chat_message.0.to_string();
+                                                    let user_name = chat_message.0.to_owned();
                                                     html!
                                                     {
                                                         <button
@@ -532,7 +532,23 @@ impl Component for CheckersGame
                                             <button>{ "Accept" }</button>
                                         </td>
                                         <td>
-                                            <button>{ "Decline" }</button>
+                                            {
+                                                if true
+                                                {
+                                                    let user_name = invitation.from_user.to_owned();
+                                                    html!
+                                                    {
+                                                        <button
+                                                            onclick=self.link.callback(move |_| WsAction::DeclineInvitation(user_name.clone()))>
+                                                            { "Decline" }
+                                                        </button>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    html! {  }
+                                                }
+                                            }
                                         </td>
                                     </tr>
                                 })
