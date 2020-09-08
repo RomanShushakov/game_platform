@@ -88,7 +88,7 @@ pub struct CheckersGame
     state: State,
     websockets_task: Option<WebSocketTask>,
     fetch_task: Option<FetchTask>,
-    timeout_tasks: Vec<TimeoutTask>,
+    timeout_tasks: Vec<(TimeoutTask, String)>,
 }
 
 
@@ -162,18 +162,6 @@ impl CheckersGame
             }
         }
     }
-
-
-    // fn add_online_user(&mut self, user: String)
-    // {
-    //     self.state.online_users.push(ChatMessage(user));
-    // }
-
-
-    // fn add_received_invitation(&mut self, invitation: String)
-    // {
-    //     self.state.received_invitations.push(ReceivedInvitation { from_user: invitation });
-    // }
 
 
     fn auto_decline_invitation(&mut self, from_user: String) -> TimeoutTask
@@ -297,7 +285,7 @@ impl Component for CheckersGame
                                     WebSocketStatus::Closed | WebSocketStatus::Error => WsAction::Lost.into(),
                                 });
                                 let task =
-                                    WebSocketService::connect("ws://0.0.0.0:8080/ws/", callback, notification)
+                                    WebSocketService::connect("ws://localhost:8080/ws/", callback, notification)
                                         .unwrap();
                                 self.websockets_task = Some(task);
                                 self.state.is_connected = true;
@@ -339,6 +327,13 @@ impl Component for CheckersGame
                             },
                         WsAction::DeclineInvitation(to_user) =>
                             {
+                                if let Some(idx) = self.timeout_tasks.iter()
+                                    .position(|data| data.1 == to_user)
+                                {
+                                    let _ = self.timeout_tasks.remove(idx);
+                                }
+
+
                                 if let Some(idx) = self.state.received_invitations
                                     .iter()
                                     .position(|invitation| invitation.from_user == to_user)
@@ -373,7 +368,7 @@ impl Component for CheckersGame
                         {
                             self.state.received_invitations.push(ReceivedInvitation { from_user: received_data.data.clone() });
                             let task = self.auto_decline_invitation(received_data.data.clone());
-                            self.timeout_tasks.push(task);
+                            self.timeout_tasks.push((task, received_data.data.clone()));
                         }
                         else if received_data.action == "decline_invitation"
                         {
