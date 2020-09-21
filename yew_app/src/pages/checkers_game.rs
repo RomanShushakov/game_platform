@@ -267,6 +267,7 @@ impl Component for CheckersGame
                                     WebSocketStatus::Closed | WebSocketStatus::Error => WsAction::Lost.into(),
                                 });
                                 let task =
+                                    // WebSocketService::connect("wss://gp.stresstable.com/ws/", callback, notification)
                                     WebSocketService::connect("ws://localhost:8080/ws/", callback, notification)
                                         .unwrap();
                                 self.websockets_task = Some(task);
@@ -614,7 +615,7 @@ impl Component for CheckersGame
         if first_render
         {
             self.link.send_message(Msg::ExtractChatLog);
-            self.link.send_message(WsAction::Connect);
+            // self.link.send_message(WsAction::Connect);
         }
 
         if let Some(element) = web_sys::window().unwrap()

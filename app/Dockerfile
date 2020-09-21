@@ -1,4 +1,4 @@
-FROM rust:1.45
+FROM rust:1.46
 
 ENV USER=root
 
