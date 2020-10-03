@@ -1,1 +1,4 @@
 ./target
+./.env
+./.idea
+./web_layout/obsolete

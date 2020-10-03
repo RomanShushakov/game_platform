@@ -76,6 +76,22 @@ pub struct UserUpdateDataRequest
 
 
 #[derive(Serialize)]
+pub struct AuthorizedUserInfo
+{
+    pub user_name: String,
+    pub email: String
+}
+
+
+#[derive(Serialize)]
+pub struct AuthorizedSuperUserInfo
+{
+    pub user_name: String,
+    pub email: String
+}
+
+
+#[derive(Serialize)]
 pub struct UserForAllUsersResponse
 {
     pub id: String,

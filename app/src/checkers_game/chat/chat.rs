@@ -20,7 +20,11 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 
 /// Entry point for our route
-pub async fn chat_route(req: HttpRequest, stream: web::Payload, srv: web::Data<Addr<server::ChatServer>>, pool: web::Data<DbPool>)
+pub async fn chat_route(
+        req: HttpRequest, stream: web::Payload,
+        srv: web::Data<Addr<server::ChatServer>>,
+        pool: web::Data<DbPool>
+    )
     -> Result<HttpResponse, Error>
 {
     ws::start(
@@ -42,21 +46,25 @@ pub async fn chat_route(req: HttpRequest, stream: web::Payload, srv: web::Data<A
 fn save_message_in_db(pool: web::Data<DbPool>, room: String, name: String, m: String)
 {
     let conn = pool.get().expect("couldn't get db connection from pool");
-    chat_database::insert_new_message(room.to_owned(), name.to_owned(), m.to_owned(), &conn);
+    chat_database::insert_new_message(room, name, m, &conn);
 }
 
 
-pub async fn extract_chat_log(pool: web::Data<DbPool>, info: web::Path<Info>, _request: HttpRequest) -> Result<HttpResponse, Error>
+pub async fn extract_chat_log(
+        pool: web::Data<DbPool>,
+        info: web::Path<Info>,
+        _request: HttpRequest
+    ) -> Result<HttpResponse, Error>
 {
     let room = info.room.clone();
     let conn = pool.get().expect("couldn't get db connection from pool");
     let all_messages = web::block(move || chat_database::extract_chat_log(room.to_owned(), &conn))
-    .await
-    .map_err(|e|
-        {
-            eprintln!("{}", e);
-            HttpResponse::InternalServerError().finish()
-        })?;
+        .await
+        .map_err(|e|
+            {
+                eprintln!("{}", e);
+                HttpResponse::InternalServerError().finish()
+            })?;
     Ok(HttpResponse::Ok().json(all_messages))
 }
 
@@ -184,7 +192,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         name: self.room.clone(),
                                     });
 
-                                    let response = WsResponse { action: "join_to_room".to_owned(),  data: "joined".to_owned() };
+                                    let response = WsResponse
+                                        {
+                                            action: "join_to_room".to_owned(),
+                                            data: "joined".to_owned()
+                                        };
                                     ctx.text(serde_json::to_string(&response).unwrap());
                                 },
                             "set_name" =>
@@ -201,7 +213,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                     let msg = if let Some(ref name) = self.name
                                     {
                                         let room = self.room.clone();
-                                        save_message_in_db(self.pool.clone(), room.to_owned(), name.to_owned(), data.to_owned());
+                                        save_message_in_db(
+                                                self.pool.clone(),
+                                                room.to_owned(),
+                                                name.to_owned(),
+                                                data.to_owned()
+                                            );
                                         format!("{}: {}", name, data)
                                     }
                                     else
@@ -234,7 +251,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                                         {
                                                             for user_name in user_names
                                                             {
-                                                                let response = WsResponse { action: "users_online_response".to_owned(), data: user_name };
+                                                                let response = WsResponse
+                                                                    {
+                                                                        action: "users_online_response".to_owned(),
+                                                                        data: user_name
+                                                                    };
                                                                 ctx.text(serde_json::to_string(&response).unwrap());
                                                             }
                                                         }

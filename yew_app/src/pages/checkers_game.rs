@@ -13,7 +13,50 @@ use std::time::Duration;
 use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse, ChatMessageResponse};
 
 
+use yew_router::{route::Route, switch::Permissive, Switch};
+use yew_router::service::RouteService;
+use yew_router::agent::{RouteAgentDispatcher, RouteRequest};
+use yew_router;
+
+use crate::route::AppRoute;
+
+
 const INVITATION_WAITING_TIME: Duration = Duration::from_secs(10);
+const WEBSOCKET_URL: &str = "ws://localhost:8080/ws/";
+// const WEBSOCKET_URL: &str = "wss://gp.stresstable.com/ws/";
+
+
+enum Actions
+{
+    UsersOnline,
+    JoinToRoom,
+    SetName,
+    SendMessage,
+    Invitation,
+    AcceptInvitation,
+    DeclineInvitation,
+    UsersOnlineResponse,
+}
+
+
+impl Actions
+{
+    fn as_str(&self) -> String
+    {
+        match self
+        {
+            Actions::UsersOnline => String::from("users_online"),
+            Actions::JoinToRoom => String::from("join_to_room"),
+            Actions::SetName => String::from("users_online"),
+            Actions::SendMessage => String::from("send_message"),
+            Actions::Invitation => String::from("invitation"),
+            Actions::AcceptInvitation => String::from("accept_invitation"),
+            Actions::DeclineInvitation => String::from("decline_invitation"),
+            Actions::UsersOnlineResponse => String::from("user_online_response"),
+        }
+    }
+}
+
 
 pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
@@ -105,6 +148,7 @@ pub enum Msg
     ExtractChatLog,
     ChatLogReceived(Result<Vec<ChatMessageResponse>, Error>),
     ChatLogNotReceived,
+    ShowAlert,
 }
 
 
@@ -120,6 +164,23 @@ impl CheckersGame
                 let online_users_request = WsRequest { action: "users_online".to_owned(), data: "".to_owned() };
                 self.websockets_task.as_mut().unwrap().send(Json(&online_users_request));
             }
+
+            let mut obsolete_received_invitations_indexes = Vec::new();
+            for i in 0..self.state.received_invitations.len()
+            {
+                if let None = self.state.online_users
+                    .iter()
+                    .position(|online_user| self.state.received_invitations[i].from_user == online_user.0)
+                {
+                    obsolete_received_invitations_indexes.push(i)
+                }
+            }
+            obsolete_indexes.sort();
+            for idx in obsolete_received_invitations_indexes.iter().rev()
+            {
+                self.state.received_invitations.remove(*idx);
+            }
+
         }
         else
         {
@@ -267,8 +328,7 @@ impl Component for CheckersGame
                                     WebSocketStatus::Closed | WebSocketStatus::Error => WsAction::Lost.into(),
                                 });
                                 let task =
-                                    // WebSocketService::connect("wss://gp.stresstable.com/ws/", callback, notification)
-                                    WebSocketService::connect("ws://localhost:8080/ws/", callback, notification)
+                                    WebSocketService::connect(WEBSOCKET_URL, callback, notification)
                                         .unwrap();
                                 self.websockets_task = Some(task);
                                 self.state.is_connected = true;
@@ -313,7 +373,7 @@ impl Component for CheckersGame
                                 if let Some(idx) = self.timeout_tasks.iter()
                                     .position(|data| data.received_invitation.from_user == to_user)
                                 {
-                                    let _ = self.timeout_tasks.remove(idx);
+                                    self.timeout_tasks.remove(idx);
                                 }
 
                                 if let Some(idx) = self.state.received_invitations
@@ -324,23 +384,44 @@ impl Component for CheckersGame
                                     let request = WsRequest { action: "decline_invitation".to_owned(), data: dropped_invitation.from_user.to_owned() };
                                     self.websockets_task.as_mut().unwrap().send(Json(&request));
                                 }
+
+                                // let route = Route::<()>::from(AppRoute::UserInfo);
+                                // let mut router = RouteAgentDispatcher::new();
+                                // router.send(RouteRequest::ChangeRoute(route));
+
                             },
                         WsAction::AcceptInvitation(to_user) =>
                             {
-                                if let Some(idx) = self.timeout_tasks.iter()
-                                    .position(|data| data.received_invitation.from_user == to_user)
-                                {
-                                    let _ = self.timeout_tasks.remove(idx);
-                                }
+                                // if let Some(idx) = self.timeout_tasks.iter()
+                                //     .position(|data| data.received_invitation.from_user == to_user)
+                                // {
+                                //     self.timeout_tasks.remove(idx);
+                                // }
 
-                                if let Some(idx) = self.state.received_invitations
-                                    .iter()
-                                    .position(|invitation| invitation.from_user == to_user)
+                                for data in &self.timeout_tasks
                                 {
-                                    let dropped_invitation = self.state.received_invitations.remove(idx);
-                                    let request = WsRequest { action: "accept_invitation".to_owned(), data: dropped_invitation.from_user.to_owned() };
-                                    self.websockets_task.as_mut().unwrap().send(Json(&request));
+                                    let from_user = data.received_invitation.from_user.to_owned();
+                                    if from_user != to_user
+                                    {
+                                        let request = WsRequest { action: "decline_invitation".to_owned(), data: from_user };
+                                        self.websockets_task.as_mut().unwrap().send(Json(&request));
+                                    }
                                 }
+                                self.timeout_tasks = Vec::new();
+                                self.state.sent_invitations = Vec::new();
+                                self.state.received_invitations = Vec::new();
+                                let request = WsRequest { action: "accept_invitation".to_owned(), data: to_user.to_owned() };
+                                self.websockets_task.as_mut().unwrap().send(Json(&request));
+
+
+                                // if let Some(idx) = self.state.received_invitations
+                                //     .iter()
+                                //     .position(|invitation| invitation.from_user == to_user)
+                                // {
+                                //     let dropped_invitation = self.state.received_invitations.remove(idx);
+                                //     let request = WsRequest { action: "accept_invitation".to_owned(), data: dropped_invitation.from_user.to_owned() };
+                                //     self.websockets_task.as_mut().unwrap().send(Json(&request));
+                                // }
 
                                 if let Some(user) = &self.props.user
                                 {
@@ -354,6 +435,16 @@ impl Component for CheckersGame
                             },
                         WsAction::Disconnect =>
                             {
+                                for data in &self.timeout_tasks
+                                {
+                                    let from_user = data.received_invitation.from_user.to_owned();
+                                    let request = WsRequest { action: "decline_invitation".to_owned(), data: from_user };
+                                    self.websockets_task.as_mut().unwrap().send(Json(&request));
+                                }
+                                self.timeout_tasks = Vec::new();
+                                self.state.sent_invitations = Vec::new();
+                                self.state.received_invitations = Vec::new();
+
                                 self.websockets_task.take();
                                 self.state.is_connected = false;
                                 self.state.online_users = Vec::new();
@@ -365,6 +456,7 @@ impl Component for CheckersGame
             Msg::WsReady(response) =>
                 {
                     // if let Some(received_data) = response.map(|data| data).ok()
+
                     if let Some(received_data) = response.ok()
                     {
                         if received_data.action == "users_online_response"
@@ -394,18 +486,43 @@ impl Component for CheckersGame
                         }
                         else if received_data.action == "accept_invitation"
                         {
-                            if let Some(idx) = self.state.sent_invitations
-                                .iter()
-                                .position(|invitation| invitation.to_user == received_data.data.clone())
+                            // if let Some(idx) = self.state.sent_invitations
+                            //     .iter()
+                            //     .position(|invitation| invitation.to_user == received_data.data.clone())
+                            // {
+                            //     self.state.sent_invitations.remove(idx);
+                            // }
+
+                            for data in &self.timeout_tasks
                             {
-                                self.state.sent_invitations.remove(idx);
+                                let from_user = data.received_invitation.from_user.to_owned();
+                                if from_user != received_data.data
+                                {
+                                    let request = WsRequest { action: "decline_invitation".to_owned(), data: from_user };
+                                    self.websockets_task.as_mut().unwrap().send(Json(&request));
+                                }
                             }
+                            self.timeout_tasks = Vec::new();
+                            self.state.sent_invitations = Vec::new();
+                            self.state.received_invitations = Vec::new();
+
+
+                            // self.state.sent_invitations = Vec::new();
+                            // for data in &self.timeout_tasks
+                            // {
+                            //     if data.received_invitation.from_user != received_data.data
+                            //     {
+                            //         let request = WsRequest { action: "decline_invitation".to_owned(), data: data.received_invitation.from_user.to_owned() };
+                            //         self.websockets_task.as_mut().unwrap().send(Json(&request));
+                            //     }
+                            // }
+                            // self.timeout_tasks = Vec::new();
 
                             if let Some(user) = &self.props.user
                             {
                                 let join_to_room_request = WsRequest
                                 {
-                                    action: "join_to_room".to_owned(),
+                                    action: Actions::JoinToRoom.as_str(),
                                     data: format!("checkers_game_{}_{}", received_data.data.clone(), user.user_name),
                                 };
                                 self.websockets_task.as_mut().unwrap().send(Json(&join_to_room_request));
@@ -429,6 +546,10 @@ impl Component for CheckersGame
                     self.extract_chat_messages(response.ok());
                 },
             Msg::ChatLogNotReceived => return false,
+            Msg::ShowAlert =>
+                {
+                    yew::services::ConsoleService::log("You should sign in and connect first.");
+                }
         }
         true
     }
@@ -498,12 +619,12 @@ impl Component for CheckersGame
                             }
                             else
                             {
-                                html! { <button disabled=true>{ "Send" }</button> }
+                                html! { <button onmouseover=self.link.callback(|_| Msg::ShowAlert)>{ "Send" }</button> }
                             }
                         }
                         else
                         {
-                            html! { <button disabled=true>{ "Send" }</button> }
+                            html! { <button onmouseover=self.link.callback(|_| Msg::ShowAlert)>{ "Send" }</button> }
                         }
                     }
 

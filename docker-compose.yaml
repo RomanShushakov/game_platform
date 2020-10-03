@@ -9,7 +9,7 @@ volumes:
 
 services:
   postgres_db:
-    image: postgres:12.3
+    image: postgres:13.0
     container_name: postgres_db
     networks:
       - app_net
@@ -36,6 +36,7 @@ services:
     build: app
     environment:
       DATABASE_URL: postgresql://actix_pg_user_test:actix_pg_pass_test@postgres_db:5432/actix_pg_db_test
+      SECRET_KEY: secret_key
     command: bash -c "diesel setup && diesel migration run && cargo run --release"
     networks:
       - app_net

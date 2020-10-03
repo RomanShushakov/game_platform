@@ -12,27 +12,21 @@ use diesel::r2d2::{self, ConnectionManager};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, TokenData};
 
-use askama::Template;
+// use askama::Template;
 use crate::database::MyError;
 
 mod models;
 mod schema;
 mod database;
-mod templates;
-
-// mod checkers_game;
-//
-// use checkers_game::chat_route;
-// use checkers_game::ChatServer;
+// mod templates;
 
 mod checkers_game;
-
 use checkers_game::chat::chat::{chat_route, extract_chat_log};
-// use checkers_game::chat::chat::{chat_route};
 use checkers_game::chat::server::ChatServer;
 
-
 use actix::*;
+
+mod email;
 
 
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -44,6 +38,8 @@ async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::Use
 
     let conn = pool.get().expect("couldn't get db connection from pool");
 
+    let user_name = user_data.user_name.clone();
+
     let user = web::block(move || database::insert_new_user(&user_data, &conn))
         .await
         .map_err(|e|
@@ -53,7 +49,11 @@ async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::Use
             })?;
     match user
     {
-        Ok(_)=> Ok(Ok(HttpResponse::Ok().body(message))),
+        Ok(_) =>
+            {
+                email::send_email(user_name);
+                Ok(Ok(HttpResponse::Ok().body(message)))
+            },
         Err(err) => Ok(Err(err))
     }
 }
@@ -165,8 +165,12 @@ async fn identify_user(pool: web::Data<DbPool>, request: HttpRequest)
 
 async fn show_user_info(pool: web::Data<DbPool>, request: HttpRequest) -> Result<HttpResponse, Error>
 {
-    let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
-    let undefined_user_response = Ok(HttpResponse::Ok().content_type("text/html").body(user_info));
+    // let user_info = templates::AuthorizedUserInfo { user_name: "undefined", email: "undefined" }.render().unwrap();
+    // let undefined_user_response = Ok(HttpResponse::Ok().content_type("text/html").body(user_info));
+
+    let user_info = models::AuthorizedUserInfo { user_name: "undefined".to_owned(), email: "undefined".to_owned() };
+    let undefined_user_response = Ok(HttpResponse::Ok().json(user_info));
+
 
     if let Some(received_token) = request.headers().get("authorization")
     {
@@ -179,13 +183,19 @@ async fn show_user_info(pool: web::Data<DbPool>, request: HttpRequest) -> Result
                     {
                         if user.is_superuser
                         {
-                            let user_info = templates::AuthorizedSuperUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
-                            Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+                            // let user_info = templates::AuthorizedSuperUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
+                            // Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+
+                            let user_info = models::AuthorizedSuperUserInfo { user_name: user.user_name, email: user.email };
+                            Ok(HttpResponse::Ok().json(user_info))
                         }
                         else
                         {
-                            let user_info = templates::AuthorizedUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
-                            Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+                            // let user_info = templates::AuthorizedUserInfo { user_name: &user.user_name, email: &user.email }.render().unwrap();
+                            // Ok(HttpResponse::Ok().content_type("text/html").body(user_info))
+
+                            let user_info = models::AuthorizedUserInfo { user_name: user.user_name, email: user.email };
+                            Ok(HttpResponse::Ok().json(user_info))
                         }
                     },
                 Ok(None) => undefined_user_response,
@@ -295,7 +305,8 @@ async fn show_users(pool: web::Data<DbPool>, request: HttpRequest) -> Result<Htt
                                 {
                                     let current_user = models::UserForAllUsersResponse
                                         {
-                                            id: user.id, user_name: user.user_name, email: user.email, is_active: user.is_active
+                                            id: user.id, user_name: user.user_name,
+                                            email: user.email, is_active: user.is_active
                                         };
                                     users_data.push(current_user)
                                 }
@@ -349,7 +360,9 @@ async fn change_user_status(user: web::Json<models::UserStatusChangeRequest>, po
                                     let updated_user = change_user_activity(&pool, user.uid.to_string()).await;
                                     match updated_user
                                     {
-                                        Ok(Ok(_)) => Ok(Ok(HttpResponse::Ok().content_type("text/html").body("User status was successfully changed."))),
+                                        Ok(Ok(_)) => Ok(Ok(HttpResponse::Ok()
+                                            .content_type("text/html")
+                                            .body("User status was successfully changed."))),
                                         Ok(Err(e)) => Ok(Err(e)),
                                         Err(e) => Err(e)
                                     }
@@ -373,7 +386,7 @@ async fn change_user_status(user: web::Json<models::UserStatusChangeRequest>, po
 }
 
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()>
 {
     std::env::set_var("RUST_LOG", "actix_web=info");
