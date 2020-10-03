@@ -51,10 +51,8 @@ fn save_message_in_db(pool: web::Data<DbPool>, room: String, name: String, m: St
 
 
 pub async fn extract_chat_log(
-        pool: web::Data<DbPool>,
-        info: web::Path<Info>,
-        _request: HttpRequest
-    ) -> Result<HttpResponse, Error>
+    pool: web::Data<DbPool>, info: web::Path<Info>,
+    _request: HttpRequest) -> Result<HttpResponse, Error>
 {
     let room = info.room.clone();
     let conn = pool.get().expect("couldn't get db connection from pool");
