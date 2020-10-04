@@ -486,12 +486,20 @@ impl Component for CheckersGame
                         else if received_data.action == Actions::SomeoneDisconnected.as_str()
                         {
                             self.refresh_online_users_list();
+
                             if let Some(idx) = self.state.received_invitations
                                 .iter()
                                 .position(|invitation| invitation.from_user == received_data.data)
                             {
                                 self.state.received_invitations.remove(idx);
                             }
+
+                            if let Some(idx) = self.timeout_tasks.iter()
+                                .position(|data| data.received_invitation.from_user == received_data.data)
+                            {
+                                self.timeout_tasks.remove(idx);
+                            }
+
                         }
                         else
                         {
