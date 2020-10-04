@@ -38,6 +38,7 @@ enum Actions
     AcceptInvitation,
     DeclineInvitation,
     UsersOnlineResponse,
+    SomeoneDisconnected,
 }
 
 
@@ -55,6 +56,7 @@ impl Actions
             Actions::AcceptInvitation => String::from("accept_invitation"),
             Actions::DeclineInvitation => String::from("decline_invitation"),
             Actions::UsersOnlineResponse => String::from("users_online_response"),
+            Actions::SomeoneDisconnected => String::from("disconnect"),
         }
     }
 }
@@ -157,33 +159,22 @@ pub enum Msg
 
 impl CheckersGame
 {
+    fn refresh_online_users_list(&mut self)
+    {
+        if let Some(_) = &self.websockets_task
+        {
+            self.state.online_users = HashSet::new();
+            let online_users_request = WsRequest { action: Actions::UsersOnline.as_str(), data: "".to_string() };
+            self.websockets_task.as_mut().unwrap().send(Json(&online_users_request));
+        }
+    }
+
+
     fn add_message_to_content(&mut self, message: &str)
     {
-        if message == "Someone disconnected" || message == "Someone connected"
+        if message == "Someone connected"
         {
-            if let Some(_) = &self.websockets_task
-            {
-                self.state.online_users = HashSet::new();
-                let online_users_request = WsRequest { action: Actions::UsersOnline.as_str(), data: "".to_string() };
-                self.websockets_task.as_mut().unwrap().send(Json(&online_users_request));
-            }
-
-            // let mut obsolete_received_invitations_indexes = Vec::new();
-            // for i in 0..self.state.received_invitations.len()
-            // {
-            //     if let None = self.state.online_users
-            //         .iter()
-            //         .position(|online_user| self.state.received_invitations[i].from_user == online_user.0)
-            //     {
-            //         obsolete_received_invitations_indexes.push(i)
-            //     }
-            // }
-            // obsolete_received_invitations_indexes.sort();
-            // for idx in obsolete_received_invitations_indexes.iter().rev()
-            // {
-            //     self.state.received_invitations.remove(*idx);
-            // }
-
+            self.refresh_online_users_list();
         }
         else
         {
@@ -324,44 +315,6 @@ impl Component for CheckersGame
                 }
                 self.state.is_chat_room_defined = true;
             }
-
-
-
-
-            let mut online_users = Vec::new();
-            for user in &self.state.online_users
-            {
-                online_users.push(user.0.to_owned());
-            }
-
-            let mut received_invitations = Vec::new();
-            for invitation in &self.state.received_invitations
-            {
-                received_invitations.push(invitation.from_user.to_owned());
-            }
-            yew::services::ConsoleService::log(&format!("received invitations from: {}", format!("{:?}", received_invitations)));
-            yew::services::ConsoleService::log(&format!("online users: {}", format!("{:?}", online_users)));
-
-
-
-            // let mut unnecessary_indexes = Vec::new();
-            // for (i, invitation) in self.state.received_invitations.iter().enumerate()
-            // {
-            //     if let None = self.state.online_users.iter().position(|user| user.0 == invitation.from_user)
-            //     {
-            //         unnecessary_indexes.push(i);
-            //     }
-            // }
-            // yew::services::ConsoleService::log(&format!("{:?}", unnecessary_indexes));
-            // if !unnecessary_indexes.is_empty()
-            // {
-            //     unnecessary_indexes.sort();
-            //     for idx in unnecessary_indexes.iter().rev()
-            //     {
-            //         self.state.received_invitations.remove(*idx);
-            //     }
-            // }
-
         }
 
         match msg
@@ -530,11 +483,20 @@ impl Component for CheckersGame
                                 self.websockets_task.as_mut().unwrap().send(Json(&join_to_room_request));
                             }
                         }
+                        else if received_data.action == Actions::SomeoneDisconnected.as_str()
+                        {
+                            self.refresh_online_users_list();
+                            if let Some(idx) = self.state.received_invitations
+                                .iter()
+                                .position(|invitation| invitation.from_user == received_data.data)
+                            {
+                                self.state.received_invitations.remove(idx);
+                            }
+                        }
                         else
                         {
                             self.add_message_to_content(&received_data.data);
                         }
-
                     }
                     else { return false; }
                 },

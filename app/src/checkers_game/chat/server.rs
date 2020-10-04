@@ -227,26 +227,51 @@ impl Handler<Disconnect> for ChatServer
 
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>)
     {
-        println!("Someone disconnected");
-
         let mut rooms: Vec<String> = Vec::new();
 
         // remove address
-        if self.sessions.remove(&msg.id).is_some()
-        {
-            // remove session from all rooms
-            for (name, sessions) in &mut self.rooms
+        // if self.sessions.remove(&msg.id).is_some()
+        // remove adress and extract user_name
+        let disconnected_user_name =
             {
-                if sessions.remove(&msg.id)
+                if let Some(session_data) = self.sessions.remove(&msg.id)
                 {
-                    rooms.push(name.to_owned());
+                    // remove session from all rooms
+                    for (name, sessions) in &mut self.rooms
+                    {
+                        if sessions.remove(&msg.id)
+                        {
+                            rooms.push(name.to_owned());
+                        }
+                    }
+                    session_data.user_name
                 }
-            }
-        }
-        // send message to other users
-        for room in rooms
+                else
+                {
+                    None
+                }
+            };
+
+        match disconnected_user_name
         {
-            self.send_message(&room, "disconnect", "Someone disconnected", 0);
+            Some(user_name) =>
+                {
+                    // send message to other users
+                    for room in rooms
+                    {
+                        self.send_message(&room, "disconnect", &user_name, 0);
+                    }
+                    println!("'{}' disconnected", user_name);
+                }
+            None =>
+                {
+                    // send message to other users
+                    for room in rooms
+                    {
+                        self.send_message(&room, "disconnect", "Someone disconnected", 0);
+                    }
+                    println!("Someone disconnected");
+                }
         }
     }
 }
@@ -283,10 +308,37 @@ impl Handler<Join> for ChatServer
                 rooms.push(n.to_owned());
             }
         }
-        // send message to other users
-        for room in rooms
+
+        let user_name =
+            {
+                if let Some(session_data) = self.sessions.get(&id)
+                {
+                    session_data.user_name.clone()
+                }
+                else
+                {
+                    None
+                }
+            };
+
+        match user_name
         {
-            self.send_message(&room, "disconnect", "Someone disconnected", 0);
+            Some(user_name) =>
+                {
+                    // send message to other users
+                    for room in rooms
+                    {
+                        self.send_message(&room, "disconnect", &user_name, 0);
+                    }
+                },
+            None =>
+                {
+                    // send message to other users
+                    for room in rooms
+                    {
+                        self.send_message(&room, "disconnect", "Someone disconnected", 0);
+                    }
+                }
         }
 
         self.rooms
