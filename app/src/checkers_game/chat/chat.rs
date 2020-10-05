@@ -232,7 +232,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         room: self.room.clone(),
                                     })
                                 },
-                            "users_online" =>
+                            "request_online_users" =>
                                 {
                                     self.addr
                                         .send(server::ListUserNames
@@ -251,7 +251,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                                             {
                                                                 let response = WsResponse
                                                                     {
-                                                                        action: "users_online_response".to_owned(),
+                                                                        action: "response_online_users".to_owned(),
                                                                         data: user_name
                                                                     };
                                                                 ctx.text(serde_json::to_string(&response).unwrap());

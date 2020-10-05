@@ -11,7 +11,7 @@ use crate::KEY;
 use crate::components::AllUsers;
 
 
-#[derive(Properties, Clone)]
+#[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
@@ -262,8 +262,15 @@ impl Component for UserInfo
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        self.props = props;
-        true
+        if self.props != props
+        {
+            self.props = props;
+            true
+        }
+        else
+        {
+            false
+        }
     }
 
 

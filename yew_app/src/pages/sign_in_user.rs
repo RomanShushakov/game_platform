@@ -11,7 +11,7 @@ pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 
-#[derive(Properties, Clone)]
+#[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
@@ -151,8 +151,15 @@ impl Component for SignInUser
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        self.props = props;
-        true
+        if self.props != props
+        {
+            self.props = props;
+            true
+        }
+        else
+        {
+            false
+        }
     }
 
 
@@ -161,40 +168,40 @@ impl Component for SignInUser
         html!
         {
             <main class="main">
-            <div class="container">
-                {
-                    if let Some(user) = &self.props.user
+                <div class="container">
                     {
-                        html! { <h3>{ format!("Hello, {}!", user.user_name) }</h3> }
-                    }
-                    else
-                    {
-                        html!
+                        if let Some(user) = &self.props.user
                         {
-                            <>
-                                <h3>{ "Sign in" }</h3>
-                                <input
-                                    class="authentication_input_field" placeholder="user name"
-                                    oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
-                                <input
-                                    class="authentication_input_field" type="password" placeholder="password"
-                                    oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
-                                <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
-                                {
-                                    if let Some(message) = &self.state.error_message
+                            html! { <h3>{ format!("Hello, {}!", user.user_name) }</h3> }
+                        }
+                        else
+                        {
+                            html!
+                            {
+                                <>
+                                    <h3>{ "Sign in" }</h3>
+                                    <input
+                                        class="authentication_input_field" placeholder="user name"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditUserName(e.value)) />
+                                    <input
+                                        class="authentication_input_field" type="password" placeholder="password"
+                                        oninput=self.link.callback(|e: InputData| Msg::UpdateEditPassword(e.value)) />
+                                    <button class="button" onclick=self.link.callback(|_| Msg::Login)>{ "Login" }</button>
                                     {
-                                        html! { <h4> { message } </h4> }
+                                        if let Some(message) = &self.state.error_message
+                                        {
+                                            html! { <h4> { message } </h4> }
+                                        }
+                                        else
+                                        {
+                                            html! { }
+                                        }
                                     }
-                                    else
-                                    {
-                                        html! { }
-                                    }
-                                }
-                            </>
+                                </>
+                            }
                         }
                     }
-                }
-            </div>
+                </div>
             </main>
         }
     }

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, PartialEq, Clone)]
 pub struct AuthorizedUserResponse
 {
     pub user_name: String,

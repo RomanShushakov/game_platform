@@ -5,7 +5,7 @@ use crate::route::AppRoute;
 use crate::types::AuthorizedUserResponse;
 
 
-#[derive(Properties, Clone)]
+#[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
@@ -118,8 +118,15 @@ impl Component for NavBar
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        self.props = props;
-        true
+        if self.props != props
+        {
+            self.props = props;
+            true
+        }
+        else
+        {
+            false
+        }
     }
 
 

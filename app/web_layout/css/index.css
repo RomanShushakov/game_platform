@@ -157,3 +157,76 @@ h3 {
     overflow: auto;
     border: 1px solid black;
 }
+
+
+.field {
+    display: flex;
+    align-items: start;
+    box-sizing: content-box;
+    flex-direction: row;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+
+.checkers_board_container {
+    /* width: 1366px; */
+    box-sizing: content-box;
+    margin: 0 auto;
+    padding-top: 20px;
+}
+
+.cell {
+    width: 60px;
+    height: 60px;
+    outline: 1px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+.line {
+    display: flex;
+}
+
+
+.black {
+    background-color: rgb(102, 102, 102);
+}
+
+
+.cell_num {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+}
+
+.cell_alpha {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 60px;
+}
+
+.checker_white {
+    width: 40px;
+    height: 40px;
+    background-color: rgb(255, 255, 255);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 20px;
+}
+
+.checker_black {
+    width: 40px;
+    height: 40px;
+    background-color: rgb(0, 0, 0);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 20px;
+}

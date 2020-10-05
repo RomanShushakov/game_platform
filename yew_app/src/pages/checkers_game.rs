@@ -19,6 +19,9 @@ use yew_router::agent::{RouteAgentDispatcher, RouteRequest};
 use yew_router;
 
 use crate::route::AppRoute;
+use crate::components::CheckersBoard;
+use crate::components::CheckersChat;
+
 
 use std::collections::HashSet;
 
@@ -28,34 +31,34 @@ const WEBSOCKET_URL: &str = "ws://localhost:8080/ws/";
 // const WEBSOCKET_URL: &str = "wss://gp.stresstable.com/ws/";
 
 
-enum Actions
+pub enum Actions
 {
-    UsersOnline,
+    RequestOnlineUsers,
     JoinToRoom,
     SetName,
     SendMessage,
     Invitation,
     AcceptInvitation,
     DeclineInvitation,
-    UsersOnlineResponse,
+    ResponseOnlineUsers,
     SomeoneDisconnected,
 }
 
 
 impl Actions
 {
-    fn as_str(&self) -> String
+    pub fn as_str(&self) -> String
     {
         match self
         {
-            Actions::UsersOnline => String::from("users_online"),
+            Actions::RequestOnlineUsers => String::from("request_online_users"),
             Actions::JoinToRoom => String::from("join_to_room"),
             Actions::SetName => String::from("set_name"),
             Actions::SendMessage => String::from("send_message"),
             Actions::Invitation => String::from("invitation"),
             Actions::AcceptInvitation => String::from("accept_invitation"),
             Actions::DeclineInvitation => String::from("decline_invitation"),
-            Actions::UsersOnlineResponse => String::from("users_online_response"),
+            Actions::ResponseOnlineUsers => String::from("response_online_users"),
             Actions::SomeoneDisconnected => String::from("disconnect"),
         }
     }
@@ -66,14 +69,15 @@ pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 
-#[derive(Properties, Clone)]
+#[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
     pub user: Option<AuthorizedUserResponse>,
 }
 
 
-struct ChatMessage(String);
+#[derive(PartialEq, Clone)]
+pub struct ChatMessage(pub String);
 
 
 #[derive(Hash, Eq, PartialEq, Debug)]
@@ -101,7 +105,7 @@ struct TimeoutTaskData
 
 struct State
 {
-    message: Option<String>,
+    // message: Option<String>,
     chat_messages: Vec<ChatMessage>,
     online_users: HashSet<OnlineUser>,
     is_connected: bool,
@@ -134,19 +138,21 @@ impl From<WsAction> for Msg
 pub enum WsAction
 {
     Connect,
-    SendData,
+    // SendData,
+    SendMessage(WsRequest),
     Disconnect,
     Lost,
     SendInvitation(String),
     DeclineInvitation(String),
     AcceptInvitation(String),
+    MoveCheckersPiece(String),
 }
 
 
 pub enum Msg
 {
-    UpdateEditMessage(String),
-    DefineButton(u32),
+    // UpdateEditMessage(String),
+    // DefineButton(u32),
     WsAction(WsAction),
     WsReady(Result<WsResponse, Error>),
     Ignore,
@@ -164,7 +170,7 @@ impl CheckersGame
         if let Some(_) = &self.websockets_task
         {
             self.state.online_users = HashSet::new();
-            let online_users_request = WsRequest { action: Actions::UsersOnline.as_str(), data: "".to_string() };
+            let online_users_request = WsRequest { action: Actions::RequestOnlineUsers.as_str(), data: "".to_string() };
             self.websockets_task.as_mut().unwrap().send(Json(&online_users_request));
         }
     }
@@ -269,7 +275,22 @@ impl CheckersGame
         self.timeout_tasks = Vec::new();
         self.state.sent_invitations = Vec::new();
         self.state.received_invitations = Vec::new();
+    }
+
+
+    fn move_checkers_piece(&mut self, data: &str)
+    {
+        if let Some(_) = &self.props.user
+        {
+            self.add_message_to_content(&format!("you: {}", data));
         }
+        else
+        {
+            self.add_message_to_content(data);
+        }
+        let request = WsRequest { action: Actions::SendMessage.as_str(), data: data.to_string() };
+        self.websockets_task.as_mut().unwrap().send(Json(&request));
+    }
 
 }
 
@@ -287,7 +308,8 @@ impl Component for CheckersGame
             link, props,
             state: State
                 {
-                    message: None, chat_messages: Vec::new(), online_users: HashSet::new(),
+                    // message: None,
+                    chat_messages: Vec::new(), online_users: HashSet::new(),
                     is_connected: false, is_chat_room_defined: false,
                     sent_invitations: Vec::new(), received_invitations: Vec::new(),
                 },
@@ -310,8 +332,9 @@ impl Component for CheckersGame
                     let set_name_request = WsRequest { action: Actions::SetName.as_str(), data: format!("{}", user.user_name) };
                     self.websockets_task.as_mut().unwrap().send(Json(&set_name_request));
 
-                    let online_users_request = WsRequest { action: Actions::UsersOnline.as_str(), data: format!("{}", user.user_name) };
-                    self.websockets_task.as_mut().unwrap().send(Json(&online_users_request));
+                    let request_online_users = WsRequest { action: Actions::RequestOnlineUsers.as_str(), data: format!("{}", user.user_name) };
+
+                    self.websockets_task.as_mut().unwrap().send(Json(&request_online_users));
                 }
                 self.state.is_chat_room_defined = true;
             }
@@ -319,14 +342,14 @@ impl Component for CheckersGame
 
         match msg
         {
-            Msg::UpdateEditMessage(e) => self.state.message = Some(e),
-            Msg::DefineButton(key_code) =>
-                {
-                    if key_code == 13
-                    {
-                        self.link.send_message(WsAction::SendData);
-                    }
-                },
+            // Msg::UpdateEditMessage(e) => self.state.message = Some(e),
+            // Msg::DefineButton(key_code) =>
+            //     {
+            //         if key_code == 13
+            //         {
+            //             self.link.send_message(WsAction::SendData);
+            //         }
+            //     },
             Msg::WsAction(action) =>
                 {
                     match action
@@ -346,31 +369,41 @@ impl Component for CheckersGame
                                 self.state.is_connected = true;
                                 self.state.is_chat_room_defined = false;
                             },
-                        WsAction::SendData =>
+                        // WsAction::SendData =>
+                        //     {
+                        //         if let Some(message) = &self.state.message.clone()
+                        //         {
+                        //             if !message.is_empty()
+                        //             {
+                        //                 if let Some(_) = &self.websockets_task
+                        //                 {
+                        //                     if let Some(_) = &self.props.user
+                        //                     {
+                        //                         self.add_message_to_content(&format!("you: {}", message));
+                        //                     }
+                        //                     else
+                        //                     {
+                        //                         self.add_message_to_content(message);
+                        //                     }
+                        //
+                        //                     let request = WsRequest { action: Actions::SendMessage.as_str(), data: message.to_string() };
+                        //                     self.websockets_task.as_mut().unwrap().send(Json(&request));
+                        //
+                        //                     self.state.message = None;
+                        //                 }
+                        //                 else { return false; }
+                        //             }
+                        //             else { return false; }
+                        //         }
+                        //         else { return false; }
+                        //     },
+                        WsAction::SendMessage(request) =>
                             {
-                                if let Some(message) = &self.state.message.clone()
+                                if let Some(_) = &self.websockets_task
                                 {
-                                    if !message.is_empty()
-                                    {
-                                        if let Some(_) = &self.websockets_task
-                                        {
-                                            if let Some(_) = &self.props.user
-                                            {
-                                                self.add_message_to_content(&format!("you: {}", message));
-                                            }
-                                            else
-                                            {
-                                                self.add_message_to_content(message);
-                                            }
-
-                                            let request = WsRequest { action: Actions::SendMessage.as_str(), data: message.to_string() };
-                                            self.websockets_task.as_mut().unwrap().send(Json(&request));
-
-                                            self.state.message = None;
-                                        }
-                                        else { return false; }
-                                    }
-                                    else { return false; }
+                                    self.state.chat_messages.push(ChatMessage(request.data.to_string()));
+                                    let request = WsRequest { action: Actions::SendMessage.as_str(), data: request.data.to_string() };
+                                    self.websockets_task.as_mut().unwrap().send(Json(&request));
                                 }
                                 else { return false; }
                             },
@@ -418,6 +451,10 @@ impl Component for CheckersGame
                                     self.websockets_task.as_mut().unwrap().send(Json(&join_to_room_request));
                                 }
                             },
+                        WsAction::MoveCheckersPiece(data) =>
+                            {
+                                self.move_checkers_piece(&data);
+                            },
                         WsAction::Disconnect =>
                             {
                                 for data in &self.timeout_tasks
@@ -441,10 +478,9 @@ impl Component for CheckersGame
             Msg::WsReady(response) =>
                 {
                     // if let Some(received_data) = response.map(|data| data).ok()
-
                     if let Some(received_data) = response.ok()
                     {
-                        if received_data.action == Actions::UsersOnlineResponse.as_str()
+                        if received_data.action == Actions::ResponseOnlineUsers.as_str()
                         {
                             self.state.online_users.insert(OnlineUser(received_data.data.clone()));
                         }
@@ -499,7 +535,6 @@ impl Component for CheckersGame
                             {
                                 self.timeout_tasks.remove(idx);
                             }
-
                         }
                         else
                         {
@@ -529,174 +564,202 @@ impl Component for CheckersGame
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        self.props = props;
-        true
+        if self.props != props
+        {
+            self.props = props;
+            true
+        }
+        else
+        {
+            false
+        }
     }
 
 
     fn view(&self) -> Html
     {
+        let move_checkers_piece_handle = self.link.callback(|data| Msg::WsAction(WsAction::MoveCheckersPiece(data)));
+
+        let disconnect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Disconnect));
+        let connect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Connect));
+        let send_message_handle = self.link.callback(|request| Msg::WsAction(WsAction::SendMessage(request)));
+
+
         html!
         {
             <main class="main">
                 <div class="container">
-                    <h3>{ "Chat" }</h3>
-                    <div>
-                        {
-                            if self.state.is_connected
-                            {
-                                html!
-                                {
-                                    <button onclick=self.link.callback(|_| WsAction::Disconnect)>{ "Disconnect" }</button>
-                                }
-                            }
-                            else
-                            {
-                                html!
-                                {
-                                    <button onclick=self.link.callback(|_| WsAction::Connect)>{ "Connect" }</button>
-                                }
-                            }
-                        }
-                    </div>
-                    <div id="checkers_game_chat_log" class="checkers_game_chat_log">
-                        {
-                            for self.state.chat_messages.iter().map(|chat_message: &ChatMessage|
-                            {
-                                html! { <> { &chat_message.0 } <br /> </>  }
-                            })
-                        }
-                    </div>
-                    <input
-                        value=
-                            {
-                                if let Some(message) = &self.state.message
-                                {
-                                    message.to_string()
-                                }
-                                else
-                                {
-                                    "".to_string()
-                                }
-                            }
-                        oninput=self.link.callback(|d: InputData| Msg::UpdateEditMessage(d.value))
-                        onkeypress=self.link.callback(|e: KeyboardEvent| Msg::DefineButton(e.key_code()))
-                    />
-                    {
-                        if let Some(_) = &self.props.user
-                        {
-                            if self.state.is_connected
-                            {
-                                html! { <button onclick=self.link.callback(|_| WsAction::SendData)>{ "Send" }</button> }
-                            }
-                            else
-                            {
-                                html! { <button onmouseover=self.link.callback(|_| Msg::ShowAlert)>{ "Send" }</button> }
-                            }
-                        }
-                        else
-                        {
-                            html! { <button onmouseover=self.link.callback(|_| Msg::ShowAlert)>{ "Send" }</button> }
-                        }
-                    }
+                    <div class="field">
+                        <div class="container">
+                            < CheckersChat
+                                user=self.props.user.clone(), chat_messages=self.state.chat_messages.clone(),
+                                is_connected=self.state.is_connected.clone(), disconnect=disconnect_handle.clone(),
+                                connect=connect_handle.clone(), send_message=send_message_handle.clone()
+                             />
+                            // <h3>{ "Chat" }</h3>
+                            // <div>
+                            //     {
+                            //         if self.state.is_connected
+                            //         {
+                            //             html!
+                            //             {
+                            //                 <button onclick=self.link.callback(|_| WsAction::Disconnect)>{ "Disconnect" }</button>
+                            //             }
+                            //         }
+                            //         else
+                            //         {
+                            //             html!
+                            //             {
+                            //                 <button onclick=self.link.callback(|_| WsAction::Connect)>{ "Connect" }</button>
+                            //             }
+                            //         }
+                            //     }
+                            // </div>
+                            // <div id="checkers_game_chat_log" class="checkers_game_chat_log">
+                            //     {
+                            //         for self.state.chat_messages.iter().map(|chat_message: &ChatMessage|
+                            //         {
+                            //             html! { <> { &chat_message.0 } <br /> </>  }
+                            //         })
+                            //     }
+                            // </div>
+                            // <input
+                            //     value=
+                            //         {
+                            //             if let Some(message) = &self.state.message
+                            //             {
+                            //                 message.to_string()
+                            //             }
+                            //             else
+                            //             {
+                            //                 "".to_string()
+                            //             }
+                            //         }
+                            //     oninput=self.link.callback(|d: InputData| Msg::UpdateEditMessage(d.value))
+                            //     onkeypress=self.link.callback(|e: KeyboardEvent| Msg::DefineButton(e.key_code()))
+                            // />
+                            // {
+                            //     if let Some(_) = &self.props.user
+                            //     {
+                            //         if self.state.is_connected
+                            //         {
+                            //             html! { <button onclick=self.link.callback(|_| WsAction::SendData)>{ "Send" }</button> }
+                            //         }
+                            //         else
+                            //         {
+                            //             html! { <button onmouseover=self.link.callback(|_| Msg::ShowAlert)>{ "Send" }</button> }
+                            //         }
+                            //     }
+                            //     else
+                            //     {
+                            //         html! { <button onmouseover=self.link.callback(|_| Msg::ShowAlert)>{ "Send" }</button> }
+                            //     }
+                            // }
 
-                    <h3>{ "Users online" }</h3>
-                    <div class="checkers_game_online_users">
-                        <table>
-                            // <thead>
-                            //     <tr>
-                            //         <th>{ "User name" }</th>
-                            //     </tr>
-                            // </thead>
-                            <tbody>
-                            {
-                                for self.state.online_users.iter().map(|online_user: &OnlineUser|
-                                html!
-                                {
-                                    <tr>
-                                        <td>{ &online_user.0 }</td>
-                                        <td>
-                                            {
-                                                if true
-                                                {
-                                                    let user_name = online_user.0.clone();
-                                                    html!
+                            <h3>{ "Users online" }</h3>
+                            <div class="checkers_game_online_users">
+                                <table>
+                                    // <thead>
+                                    //     <tr>
+                                    //         <th>{ "User name" }</th>
+                                    //     </tr>
+                                    // </thead>
+                                    <tbody>
+                                    {
+                                        for self.state.online_users.iter().map(|online_user: &OnlineUser|
+                                        html!
+                                        {
+                                            <tr>
+                                                <td>{ &online_user.0 }</td>
+                                                <td>
                                                     {
-                                                        <button
-                                                            onclick=self.link.callback(move |_| WsAction::SendInvitation(user_name.clone()))
-                                                            disabled=self.invitation_status_check(&user_name)>
-                                                            { "invite to play" }
-                                                        </button>
+                                                        if true
+                                                        {
+                                                            let user_name = online_user.0.clone();
+                                                            html!
+                                                            {
+                                                                <button
+                                                                    onclick=self.link.callback(move |_| WsAction::SendInvitation(user_name.clone()))
+                                                                    disabled=self.invitation_status_check(&user_name)>
+                                                                    { "invite to play" }
+                                                                </button>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            html! {  }
+                                                        }
                                                     }
-                                                }
-                                                else
-                                                {
-                                                    html! {  }
-                                                }
-                                            }
-                                        </td>
-                                    </tr>
-                                })
-                            }
-                            </tbody>
-                        </table>
-                    </div>
+                                                </td>
+                                            </tr>
+                                        })
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
 
-                    <h3>{ "Invitations" }</h3>
-                    <div class="checkers_game_invitation">
-                        <table>
-                            <tbody>
-                            {
-                                for self.state.received_invitations.iter().map(|invitation: &ReceivedInvitation|
-                                html!
-                                {
-                                    <tr>
-                                        <td>{ &invitation.from_user }</td>
-                                        <td>
-                                            {
-                                                if true
-                                                {
-                                                    let user_name = invitation.from_user.clone();
-                                                    html!
+                            <h3>{ "Invitations" }</h3>
+                            <div class="checkers_game_invitation">
+                                <table>
+                                    <tbody>
+                                    {
+                                        for self.state.received_invitations.iter().map(|invitation: &ReceivedInvitation|
+                                        html!
+                                        {
+                                            <tr>
+                                                <td>{ &invitation.from_user }</td>
+                                                <td>
                                                     {
-                                                        <button
-                                                            onclick=self.link.callback(move |_| WsAction::AcceptInvitation(user_name.clone()))>
-                                                            { "Accept" }
-                                                        </button>
+                                                        if true
+                                                        {
+                                                            let user_name = invitation.from_user.clone();
+                                                            html!
+                                                            {
+                                                                <button
+                                                                    onclick=self.link.callback(move |_| WsAction::AcceptInvitation(user_name.clone()))>
+                                                                    { "Accept" }
+                                                                </button>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            html! {  }
+                                                        }
                                                     }
-                                                }
-                                                else
-                                                {
-                                                    html! {  }
-                                                }
-                                            }
-                                        </td>
-                                        <td>
-                                            {
-                                                if true
-                                                {
-                                                    let user_name = invitation.from_user.clone();
-                                                    html!
+                                                </td>
+                                                <td>
                                                     {
-                                                        <button
-                                                            onclick=self.link.callback(move |_| WsAction::DeclineInvitation(user_name.clone()))>
-                                                            { "Decline" }
-                                                        </button>
+                                                        if true
+                                                        {
+                                                            let user_name = invitation.from_user.clone();
+                                                            html!
+                                                            {
+                                                                <button
+                                                                    onclick=self.link.callback(move |_| WsAction::DeclineInvitation(user_name.clone()))>
+                                                                    { "Decline" }
+                                                                </button>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            html! {  }
+                                                        }
                                                     }
-                                                }
-                                                else
-                                                {
-                                                    html! {  }
-                                                }
-                                            }
-                                        </td>
-                                    </tr>
-                                })
-                            }
-                            </tbody>
-                        </table>
-                    </div>
+                                                </td>
+                                            </tr>
+                                        })
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
 
+                        </div>
+
+                        {
+                            html! { <CheckersBoard user=self.props.user.clone() move_checkers_piece=move_checkers_piece_handle.clone() /> }
+                        }
+
+                    </div>
                 </div>
             </main>
         }
