@@ -27,6 +27,7 @@ pub fn extract_chat_log(room: String, conn: &PgConnection) -> Result<Option<Vec<
 
     let all_messages = checkers_game_chat
         .filter(chat_room.eq(room))
+        .order_by(id.asc())
         .load::<chat_models::ChatMessageResponse>(conn)
         .optional()?;
     Ok(all_messages)

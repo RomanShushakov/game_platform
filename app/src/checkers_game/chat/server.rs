@@ -284,7 +284,8 @@ impl Handler<ClientMessage> for ChatServer
 
     fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>)
     {
-        self.send_message(&msg.room, "send_message", msg.msg.as_str(),  msg.id);
+        // self.send_message(&msg.room, "send_message", msg.msg.as_str(),  msg.id);
+        self.send_message(&msg.room, "received_message", msg.msg.as_str(),  msg.id);
     }
 }
 

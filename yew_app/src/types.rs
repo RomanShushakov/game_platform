@@ -68,7 +68,7 @@ pub struct WsRequest
 }
 
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct WsResponse
 {
     pub action: String,
@@ -81,4 +81,19 @@ pub struct ChatMessageResponse
 {
     pub user_name: String,
     pub message: String
+}
+
+
+#[derive(PartialEq, Clone)]
+pub struct ChatMessage(pub String);
+
+
+#[derive(Hash, Eq, PartialEq, Debug, Clone)]
+pub struct OnlineUser(pub String);
+
+
+#[derive(PartialEq, Clone)]
+pub struct SentInvitation
+{
+    pub to_user: String
 }
