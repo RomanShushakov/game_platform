@@ -11,16 +11,26 @@ pub struct Props
 }
 
 
+struct State
+{
+    piece_move: Vec<String>
+}
+
+
 pub struct CheckersBoard
 {
     link: ComponentLink<Self>,
     props: Props,
+    state: State
 }
 
 
 pub enum Msg
 {
-    SendMessage
+    SendMessage,
+    Click,
+    MouseOver,
+    ShowPosition(usize, usize)
 }
 
 
@@ -32,7 +42,12 @@ impl Component for CheckersBoard
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self
     {
-        Self { props, link }
+        Self
+        {
+            props,
+            link,
+            state: State { piece_move: Vec::new() }
+        }
     }
 
 
@@ -51,7 +66,22 @@ impl Component for CheckersBoard
                     {
                         yew::services::ConsoleService::log("unknown user");
                     }
-
+                }
+            Msg::Click => yew::services::ConsoleService::log("clicked"),
+            Msg::MouseOver => yew::services::ConsoleService::log("mouse over"),
+            Msg::ShowPosition(letter_num, num) =>
+                {
+                    let letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
+                    if self.state.piece_move.len() == 1
+                    {
+                        self.state.piece_move.push(format!("{} {}", letters[letter_num - 1], num));
+                        yew::services::ConsoleService::log(&format!("{} {}", self.state.piece_move[0], self.state.piece_move[1]));
+                        self.state.piece_move = Vec::new();
+                    }
+                    else
+                    {
+                        self.state.piece_move.push(format!("{} {}", letters[letter_num - 1], num));
+                    }
                 }
         }
         true
@@ -74,126 +104,70 @@ impl Component for CheckersBoard
 
     fn view(&self) -> Html
     {
+        let letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
+        let letters_line: Html =
+            {
+                (0..8).into_iter().map(|i: usize|
+                {
+                    html!
+                    {
+                        <div class="cell_alpha">{ letters[i] }</div>
+                    }
+                }).collect()
+            };
+
         html!
         {
             <div class="checkers_board_container">
-                <div class="line" onclick=self.link.callback(|_| Msg::SendMessage)>
-                    <div class="cell_num">   </div>
-                    <div class="cell_alpha">{ "A" }</div>
-                    <div class="cell_alpha">{ "B" }</div>
-                    <div class="cell_alpha">{ "C" }</div>
-                    <div class="cell_alpha">{ "D" }</div>
-                    <div class="cell_alpha">{ "E" }</div>
-                    <div class="cell_alpha">{ "F" }</div>
-                    <div class="cell_alpha">{ "G" }</div>
-                    <div class="cell_alpha">{ "H" }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 8 }</div>
-                    <div class="cell white" data-alpha="1" data-num="8"></div>
-                    <div class="cell black" data-alpha="2" data-num="8"></div>
-                    <div class="cell white" data-alpha="3" data-num="8"></div>
-                    <div class="cell black" data-alpha="4" data-num="8"></div>
-                    <div class="cell white" data-alpha="5" data-num="8"></div>
-                    <div class="cell black" data-alpha="6" data-num="8"></div>
-                    <div class="cell white" data-alpha="7" data-num="8"></div>
-                    <div class="cell black" data-alpha="8" data-num="8"></div>
-                    <div class="cell_num">{ 8 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 7 }</div>
-                    <div class="cell black" data-alpha="1" data-num="7"></div>
-                    <div class="cell white" data-alpha="2" data-num="7"></div>
-                    <div class="cell black" data-alpha="3" data-num="7"></div>
-                    <div class="cell white" data-alpha="4" data-num="7"></div>
-                    <div class="cell black" data-alpha="5" data-num="7"></div>
-                    <div class="cell white" data-alpha="6" data-num="7"></div>
-                    <div class="cell black" data-alpha="7" data-num="7"></div>
-                    <div class="cell white" data-alpha="8" data-num="7"></div>
-                    <div class="cell_num">{ 7 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 6 }</div>
-                    <div class="cell white" data-alpha="1" data-num="6"></div>
-                    <div class="cell black" data-alpha="2" data-num="6"></div>
-                    <div class="cell white" data-alpha="3" data-num="6"></div>
-                    <div class="cell black" data-alpha="4" data-num="6"></div>
-                    <div class="cell white" data-alpha="5" data-num="6"></div>
-                    <div class="cell black" data-alpha="6" data-num="6"></div>
-                    <div class="cell white" data-alpha="7" data-num="6"></div>
-                    <div class="cell black" data-alpha="8" data-num="6"></div>
-                    <div class="cell_num">{ 6 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 5 }</div>
-                    <div class="cell black" data-alpha="1" data-num="5"></div>
-                    <div class="cell white" data-alpha="2" data-num="5"></div>
-                    <div class="cell black" data-alpha="3" data-num="5"></div>
-                    <div class="cell white" data-alpha="4" data-num="5"></div>
-                    <div class="cell black" data-alpha="5" data-num="5"></div>
-                    <div class="cell white" data-alpha="6" data-num="5"></div>
-                    <div class="cell black" data-alpha="7" data-num="5"></div>
-                    <div class="cell white" data-alpha="8" data-num="5"></div>
-                    <div class="cell_num">{ 5 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 4 }</div>
-                    <div class="cell white" data-alpha="1" data-num="4"></div>
-                    <div class="cell black" data-alpha="2" data-num="4"></div>
-                    <div class="cell white" data-alpha="3" data-num="4"></div>
-                    <div class="cell black" data-alpha="4" data-num="4"></div>
-                    <div class="cell white" data-alpha="5" data-num="4"></div>
-                    <div class="cell black" data-alpha="6" data-num="4"></div>
-                    <div class="cell white" data-alpha="7" data-num="4"></div>
-                    <div class="cell black" data-alpha="8" data-num="4"></div>
-                    <div class="cell_num">{ 4 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 3 }</div>
-                    <div class="cell black" data-alpha="1" data-num="3"></div>
-                    <div class="cell white" data-alpha="2" data-num="3"></div>
-                    <div class="cell black" data-alpha="3" data-num="3"></div>
-                    <div class="cell white" data-alpha="4" data-num="3"></div>
-                    <div class="cell black" data-alpha="5" data-num="3"></div>
-                    <div class="cell white" data-alpha="6" data-num="3"></div>
-                    <div class="cell black" data-alpha="7" data-num="3"></div>
-                    <div class="cell white" data-alpha="8" data-num="3"></div>
-                    <div class="cell_num">{ 3 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 2 }</div>
-                    <div class="cell white" data-alpha="1" data-num="2"></div>
-                    <div class="cell black" data-alpha="2" data-num="2"></div>
-                    <div class="cell white" data-alpha="3" data-num="2"></div>
-                    <div class="cell black" data-alpha="4" data-num="2"></div>
-                    <div class="cell white" data-alpha="5" data-num="2"></div>
-                    <div class="cell black" data-alpha="6" data-num="2"></div>
-                    <div class="cell white" data-alpha="7" data-num="2"></div>
-                    <div class="cell black" data-alpha="8" data-num="2"></div>
-                    <div class="cell_num">{ 2 }</div>
-                </div>
-                <div class="line">
-                    <div class="cell_num">{ 1 }</div>
-                    <div class="cell black" data-alpha="1" data-num="1"></div>
-                    <div class="cell white" data-alpha="2" data-num="1"></div>
-                    <div class="cell black" data-alpha="3" data-num="1"></div>
-                    <div class="cell white" data-alpha="4" data-num="1"></div>
-                    <div class="cell black" data-alpha="5" data-num="1"></div>
-                    <div class="cell white" data-alpha="6" data-num="1"></div>
-                    <div class="cell black" data-alpha="7" data-num="1"></div>
-                    <div class="cell white" data-alpha="8" data-num="1"></div>
-                    <div class="cell_num">{ 1 }</div>
-                </div>
                 <div class="line">
                     <div class="cell_num">   </div>
-                    <div class="cell_alpha">{ "A" }</div>
-                    <div class="cell_alpha">{ "B" }</div>
-                    <div class="cell_alpha">{ "C" }</div>
-                    <div class="cell_alpha">{ "D" }</div>
-                    <div class="cell_alpha">{ "E" }</div>
-                    <div class="cell_alpha">{ "F" }</div>
-                    <div class="cell_alpha">{ "G" }</div>
-                    <div class="cell_alpha">{ "H" }</div>
+                    { letters_line.clone() }
+                </div>
+                {
+                    for (1..=8).into_iter().rev().map(|i: usize|
+                    {
+                        html!
+                        {
+                            <div class="line">
+                                <div class="cell_num">{ i }</div>
+                                {
+                                    for (1..=8).into_iter().map(|j: usize|
+                                    {
+                                        if (i + j) % 2 == 1
+                                        {
+                                            html!
+                                            {
+                                                <div
+                                                    class="cell white"
+                                                    data-alpha={ j }
+                                                    data-num={ i }
+                                                    onclick=self.link.callback(move |_| Msg::ShowPosition(j, i))>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            html!
+                                            {
+                                                <div
+                                                    class="cell black"
+                                                    data-alpha={ j }
+                                                    data-num={ i }
+                                                    onclick=self.link.callback(move |_| Msg::ShowPosition(j, i))>
+                                                </div>
+                                            }
+                                        }
+                                    })
+                                }
+                                <div class="cell_num">{ i }</div>
+                            </div>
+                        }
+                    })
+                }
+
+                <div class="line">
+                    <div class="cell_num">   </div>
+                    { letters_line }
                 </div>
             </div>
         }

@@ -13,7 +13,7 @@ use crate::types::
     AuthorizedUserResponse, WsRequest, ChatMessage, OnlineUser, SentInvitation, ChatMessageResponse,
     WsResponse, ReceivedInvitation
 };
-use crate::pages::{Actions};
+use crate::pages::{ChatAction};
 
 
 const INVITATION_WAITING_TIME: Duration = Duration::from_secs(30);
@@ -162,7 +162,7 @@ impl CheckersChat
             let from_user = &data.received_invitation.from_user;
             if from_user != skip_user_name
             {
-                let request = WsRequest { action: Actions::DeclineInvitation.as_str(), data: from_user.to_owned() };
+                let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: from_user.to_owned() };
                 self.props.send_websocket_data.emit(request);
             }
         }
@@ -208,7 +208,7 @@ impl Component for CheckersChat
                     for data in &self.timeout_tasks
                     {
                         let from_user = data.received_invitation.from_user.clone();
-                        let request = WsRequest { action: Actions::DeclineInvitation.as_str(), data: from_user };
+                        let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: from_user };
                         self.props.send_websocket_data.emit(request);
                     }
                     self.timeout_tasks = Vec::new();
@@ -219,6 +219,7 @@ impl Component for CheckersChat
                 },
             Msg::Connect =>
                 {
+                    self.link.send_message(Msg::ExtractChatLog);
                     self.props.connect.emit(());
                 },
             Msg::UpdateEditMessage(e) => self.state.message = Some(e),
@@ -236,7 +237,7 @@ impl Component for CheckersChat
                         if !message.is_empty()
                         {
                             self.state.chat_messages.push(ChatMessage(format!("you: {}", message)));
-                            let request = WsRequest { action: Actions::SendMessage.as_str(), data: message.to_string() };
+                            let request = WsRequest { action: ChatAction::SendMessage.as_str(), data: message.to_string() };
                             self.props.send_websocket_data.emit(request);
                             self.state.message = None;
                         }
@@ -258,7 +259,7 @@ impl Component for CheckersChat
             Msg::SendInvitation(to_user) =>
                 {
                     self.state.sent_invitations.push(SentInvitation { to_user: to_user.clone() });
-                    let request = WsRequest { action: Actions::Invitation.as_str(), data: to_user };
+                    let request = WsRequest { action: ChatAction::Invitation.as_str(), data: to_user };
                     self.props.send_websocket_data.emit(request);
                 },
             Msg::DeclineInvitation(to_user) =>
@@ -274,21 +275,21 @@ impl Component for CheckersChat
                         .position(|invitation| invitation.from_user == to_user)
                     {
                         let dropped_invitation = self.state.received_invitations.remove(idx);
-                        let request = WsRequest { action: Actions::DeclineInvitation.as_str(), data: dropped_invitation.from_user };
+                        let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: dropped_invitation.from_user };
                         self.props.send_websocket_data.emit(request);
                     }
                 },
             Msg::AcceptInvitation(to_user) =>
                 {
                     self.decline_invitations(&to_user);
-                    let request = WsRequest { action: Actions::AcceptInvitation.as_str(), data: to_user.clone() };
+                    let request = WsRequest { action: ChatAction::AcceptInvitation.as_str(), data: to_user.clone() };
                     self.props.send_websocket_data.emit(request);
 
                     if let Some(user) = &self.props.user
                     {
                         let join_to_room_request = WsRequest
                         {
-                            action: Actions::JoinToRoom.as_str(),
+                            action: ChatAction::JoinToRoom.as_str(),
                             data: format!("checkers_game_{}_{}", user.user_name, to_user),
                         };
                         self.props.send_websocket_data.emit(join_to_room_request);
@@ -306,15 +307,15 @@ impl Component for CheckersChat
             self.props = props;
             if let Some(response) = self.props.websocket_chat_response.clone()
             {
-                if response.action == Actions::ReceivedMessage.as_str()
+                if response.action == ChatAction::ReceivedMessage.as_str()
                 {
                     self.props.reset_websocket_chat_response.emit(());
                     self.state.chat_messages.push(ChatMessage(response.data.to_owned()));
                 }
-                else if response.action == Actions::SomeoneDisconnected.as_str()
+                else if response.action == ChatAction::SomeoneDisconnected.as_str()
                 {
                     self.state.online_users = HashSet::new();
-                    let online_users_request = WsRequest { action: Actions::RequestOnlineUsers.as_str(), data: "".to_string() };
+                    let online_users_request = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: "".to_string() };
                     self.props.reset_websocket_chat_response.emit(());
                     self.props.send_websocket_data.emit(online_users_request);
                     if let Some(idx) = self.state.received_invitations
@@ -329,19 +330,19 @@ impl Component for CheckersChat
                         self.timeout_tasks.remove(idx);
                     }
                 }
-                else if response.action == Actions::ResponseOnlineUsers.as_str()
+                else if response.action == ChatAction::ResponseOnlineUsers.as_str()
                 {
                     self.props.reset_websocket_chat_response.emit(());
                     self.state.online_users.insert(OnlineUser(response.data.clone()));
                 }
-                else if response.action == Actions::SomeoneConnected.as_str() // && response.data == "Someone connected"
+                else if response.action == ChatAction::SomeoneConnected.as_str() // && response.data == "Someone connected"
                 {
                     self.state.online_users = HashSet::new();
-                    let online_users_request = WsRequest { action: Actions::RequestOnlineUsers.as_str(), data: "".to_string() };
+                    let online_users_request = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: "".to_string() };
                     self.props.reset_websocket_chat_response.emit(());
                     self.props.send_websocket_data.emit(online_users_request);
                 }
-                else if response.action == Actions::Invitation.as_str()
+                else if response.action == ChatAction::Invitation.as_str()
                 {
                     self.props.reset_websocket_chat_response.emit(());
                     self.state.received_invitations.push(ReceivedInvitation { from_user: response.data.clone() });
@@ -354,7 +355,7 @@ impl Component for CheckersChat
                             }
                     );
                 }
-                else if response.action == Actions::DeclineInvitation.as_str()
+                else if response.action == ChatAction::DeclineInvitation.as_str()
                 {
                     self.props.reset_websocket_chat_response.emit(());
                     if let Some(idx) = self.state.sent_invitations
@@ -364,7 +365,7 @@ impl Component for CheckersChat
                         self.state.sent_invitations.remove(idx);
                     }
                 }
-                else if response.action == Actions::AcceptInvitation.as_str()
+                else if response.action == ChatAction::AcceptInvitation.as_str()
                 {
                     self.props.reset_websocket_chat_response.emit(());
                     self.decline_invitations(&response.data);
@@ -372,7 +373,7 @@ impl Component for CheckersChat
                     {
                         let join_to_room_request = WsRequest
                         {
-                            action: Actions::JoinToRoom.as_str(),
+                            action: ChatAction::JoinToRoom.as_str(),
                             data: format!("checkers_game_{}_{}", &response.data, user.user_name),
                         };
                         self.props.send_websocket_data.emit(join_to_room_request);

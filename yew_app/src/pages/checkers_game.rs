@@ -7,13 +7,16 @@ use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse};
 use crate::components::CheckersBoard;
 use crate::components::CheckersChat;
 
+use std::slice::Iter;
+use self::ChatAction::*;
+
 
 const WEBSOCKET_URL: &str = "ws://localhost:8080/ws/";
 // const WEBSOCKET_URL: &str = "wss://gp.stresstable.com/ws/";
 pub const GAME_NAME: &str = "checkers_game";
 
 
-pub enum Actions
+pub enum ChatAction
 {
     RequestOnlineUsers,
     JoinToRoom,
@@ -29,24 +32,50 @@ pub enum Actions
 }
 
 
-impl Actions
+impl ChatAction
 {
     pub fn as_str(&self) -> String
     {
         match self
         {
-            Actions::RequestOnlineUsers => String::from("request_online_users"),
-            Actions::JoinToRoom => String::from("join_to_room"),
-            Actions::SetName => String::from("set_name"),
-            Actions::SendMessage => String::from("send_message"),
-            Actions::Invitation => String::from("invitation"),
-            Actions::AcceptInvitation => String::from("accept_invitation"),
-            Actions::DeclineInvitation => String::from("decline_invitation"),
-            Actions::ResponseOnlineUsers => String::from("response_online_users"),
-            Actions::SomeoneDisconnected => String::from("disconnect"),
-            Actions::SomeoneConnected => String::from("connect"),
-            Actions::ReceivedMessage => String::from("received_message"),
+            ChatAction::RequestOnlineUsers => String::from("request_online_users"),
+            ChatAction::JoinToRoom => String::from("join_to_room"),
+            ChatAction::SetName => String::from("set_name"),
+            ChatAction::SendMessage => String::from("send_message"),
+            ChatAction::Invitation => String::from("invitation"),
+            ChatAction::AcceptInvitation => String::from("accept_invitation"),
+            ChatAction::DeclineInvitation => String::from("decline_invitation"),
+            ChatAction::ResponseOnlineUsers => String::from("response_online_users"),
+            ChatAction::SomeoneDisconnected => String::from("disconnect"),
+            ChatAction::SomeoneConnected => String::from("connect"),
+            ChatAction::ReceivedMessage => String::from("received_message"),
         }
+    }
+
+    pub fn iterator() -> Iter<'static, ChatAction>
+     {
+        static ACTIONS: [ChatAction; 11] =
+            [
+                RequestOnlineUsers, JoinToRoom, SetName, SendMessage, Invitation,
+                AcceptInvitation, DeclineInvitation, ResponseOnlineUsers,
+                SomeoneDisconnected, SomeoneConnected, ReceivedMessage
+            ];
+        ACTIONS.iter()
+    }
+}
+
+
+enum CheckersGameAction
+{
+    ChatAction(ChatAction)
+}
+
+
+impl From<ChatAction> for CheckersGameAction
+{
+    fn from(action: ChatAction) -> Self
+    {
+        CheckersGameAction::ChatAction(action)
     }
 }
 
@@ -75,15 +104,6 @@ pub struct CheckersGame
 }
 
 
-impl From<WsAction> for Msg
-{
-    fn from(action: WsAction) -> Self
-    {
-        Msg::WsAction(action)
-    }
-}
-
-
 pub enum WsAction
 {
     Connect,
@@ -92,7 +112,6 @@ pub enum WsAction
     Disconnect,
     Lost,
     MoveCheckersPiece(String),
-
 }
 
 
@@ -101,6 +120,15 @@ pub enum Msg
     WsAction(WsAction),
     WsReady(Result<WsResponse, Error>),
     Ignore,
+}
+
+
+impl From<WsAction> for Msg
+{
+    fn from(action: WsAction) -> Self
+    {
+        Msg::WsAction(action)
+    }
 }
 
 
@@ -132,13 +160,13 @@ impl Component for CheckersGame
         {
             if !self.state.is_chat_room_defined
             {
-                let join_to_room_request = WsRequest { action: Actions::JoinToRoom.as_str(), data: GAME_NAME.to_string() };
+                let join_to_room_request = WsRequest { action: ChatAction::JoinToRoom.as_str(), data: GAME_NAME.to_string() };
                 self.websocket_task.as_mut().unwrap().send(Json(&join_to_room_request));
                 if let Some(user) = &self.props.user
                 {
-                    let set_name_request = WsRequest { action: Actions::SetName.as_str(), data: format!("{}", user.user_name) };
+                    let set_name_request = WsRequest { action: ChatAction::SetName.as_str(), data: format!("{}", user.user_name) };
                     self.websocket_task.as_mut().unwrap().send(Json(&set_name_request));
-                    let request_online_users = WsRequest { action: Actions::RequestOnlineUsers.as_str(), data: format!("{}", user.user_name) };
+                    let request_online_users = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: format!("{}", user.user_name) };
                     self.websocket_task.as_mut().unwrap().send(Json(&request_online_users));
                 }
                 self.state.is_chat_room_defined = true;
@@ -155,7 +183,6 @@ impl Component for CheckersGame
                         WsAction::Connect =>
                             {
                                 self.state.websocket_chat_response = None;
-
                                 let callback = self.link.callback(|Json(data)| Msg::WsReady(data));
                                 let notification = self.link.callback(|status| match status
                                 {
@@ -193,7 +220,11 @@ impl Component for CheckersGame
                     // if let Some(received_data) = response.map(|data| data).ok()
                     if let Some(received_data) = response.ok()
                     {
-                        self.state.websocket_chat_response = Some(received_data.clone());
+                        if let Some(_) = ChatAction::iterator()
+                            .position(|action| action.as_str() == received_data.action)
+                        {
+                            self.state.websocket_chat_response = Some(received_data.clone());
+                        }
                     }
                     else { return false; }
                 },
@@ -223,7 +254,6 @@ impl Component for CheckersGame
         let connect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Connect));
         let send_websocket_data_handle = self.link.callback(|request| Msg::WsAction(WsAction::SendWebSocketData(request)));
         let reset_websocket_chat_response_handle = self.link.callback(|_| Msg::WsAction(WsAction::ResetWebsocketChatResponse));
-
 
         html!
         {

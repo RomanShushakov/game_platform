@@ -8,4 +8,4 @@ pub use homepage::HomePage;
 pub use sign_in_user::SignInUser;
 pub use register_user::RegisterUser;
 pub use user_info::UserInfo;
-pub use checkers_game::{CheckersGame, Actions, GAME_NAME};
+pub use checkers_game::{CheckersGame, ChatAction, GAME_NAME};
