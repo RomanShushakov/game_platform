@@ -2,8 +2,8 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Response, FetchService, Request};
 use anyhow::Error;
 use yew::format::{Json, Nothing};
-use yew::services::websocket::{WebSocketTask};
-
+use yew::services::timeout::{TimeoutService, TimeoutTask};
+use std::time::Duration;
 
 use web_sys;
 use std::collections::HashSet;
@@ -11,10 +11,12 @@ use std::collections::HashSet;
 use crate::types::
 {
     AuthorizedUserResponse, WsRequest, ChatMessage, OnlineUser, SentInvitation, ChatMessageResponse,
-    WsResponse
+    WsResponse, ReceivedInvitation
 };
 use crate::pages::{Actions};
 
+
+const INVITATION_WAITING_TIME: Duration = Duration::from_secs(30);
 const CHAT_LOG_URL: &str = "/chat/extract_log/checkers_game";
 
 
@@ -29,14 +31,9 @@ pub struct Props
     pub is_connected: bool,
     pub disconnect: Callback<()>,
     pub connect: Callback<()>,
-    // pub online_users: HashSet<OnlineUser>,
-    pub send_invitation: Callback<String>,
-    pub sent_invitations: Vec<SentInvitation>,
-
     pub send_websocket_data: Callback<WsRequest>,
-    pub websocket_chat_response: Option<WsResponse>,
     pub reset_websocket_chat_response: Callback<()>,
-
+    pub websocket_chat_response: Option<WsResponse>,
 }
 
 
@@ -46,10 +43,15 @@ struct State
     message: Option<String>,
     chat_messages: Vec<ChatMessage>,
     online_users: HashSet<OnlineUser>,
-    // is_connected: bool,
-    // is_chat_room_defined: bool,
-    // sent_invitations: Vec<SentInvitation>,
-    // received_invitations: Vec<ReceivedInvitation>,
+    sent_invitations: Vec<SentInvitation>,
+    received_invitations: Vec<ReceivedInvitation>,
+}
+
+
+struct TimeoutTaskData
+{
+    timeout_task: TimeoutTask,
+    received_invitation: ReceivedInvitation
 }
 
 
@@ -59,6 +61,7 @@ pub struct CheckersChat
     props: Props,
     state: State,
     fetch_task: Option<FetchTask>,
+    timeout_tasks: Vec<TimeoutTaskData>,
 }
 
 
@@ -69,10 +72,12 @@ pub enum Msg
     UpdateEditMessage(String),
     DefineButton(u32),
     SendMessage,
-    SendInvitation(String),
     ExtractChatLog,
     ChatLogReceived(Result<Vec<ChatMessageResponse>, Error>),
     ChatLogNotReceived,
+    SendInvitation(String),
+    DeclineInvitation(String),
+    AcceptInvitation(String),
 }
 
 
@@ -80,7 +85,7 @@ impl CheckersChat
 {
     fn invitation_status_check(&self, to_user: &str) -> bool
     {
-        for invitation in &self.props.sent_invitations
+        for invitation in &self.state.sent_invitations
         {
             if invitation.to_user == to_user
             {
@@ -142,6 +147,31 @@ impl CheckersChat
         }
     }
 
+
+    fn auto_decline_invitation(&mut self, from_user: String) -> TimeoutTask
+    {
+        let callback = self.link.callback(move |_| Msg::DeclineInvitation(from_user.clone()));
+        TimeoutService::spawn(INVITATION_WAITING_TIME, callback)
+    }
+
+
+    fn decline_invitations(&mut self, skip_user_name: &str)
+    {
+        for data in &self.timeout_tasks
+        {
+            let from_user = &data.received_invitation.from_user;
+            if from_user != skip_user_name
+            {
+                let request = WsRequest { action: Actions::DeclineInvitation.as_str(), data: from_user.to_owned() };
+                self.props.send_websocket_data.emit(request);
+            }
+        }
+        self.timeout_tasks = Vec::new();
+        self.state.sent_invitations = Vec::new();
+        self.state.received_invitations = Vec::new();
+    }
+
+
 }
 
 
@@ -160,20 +190,31 @@ impl Component for CheckersChat
             state: State
             {
                 message: None, chat_messages: Vec::new(), online_users: HashSet::new(),
+                sent_invitations: Vec::new(), received_invitations: Vec::new(),
             },
-            fetch_task: None
+            fetch_task: None, timeout_tasks: Vec::new(),
         }
     }
 
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender
     {
-
         match msg
         {
             Msg::Disconnect =>
                 {
                     self.state.online_users = HashSet::new();
+
+                    for data in &self.timeout_tasks
+                    {
+                        let from_user = data.received_invitation.from_user.clone();
+                        let request = WsRequest { action: Actions::DeclineInvitation.as_str(), data: from_user };
+                        self.props.send_websocket_data.emit(request);
+                    }
+                    self.timeout_tasks = Vec::new();
+                    self.state.sent_invitations = Vec::new();
+                    self.state.received_invitations = Vec::new();
+
                     self.props.disconnect.emit(());
                 },
             Msg::Connect =>
@@ -204,7 +245,6 @@ impl Component for CheckersChat
                     else { return false; }
 
                 },
-            Msg::SendInvitation(user_name) => self.props.send_invitation.emit(user_name),
             Msg::ExtractChatLog =>
                 {
                     let task = self.extract_chat_log();
@@ -215,6 +255,45 @@ impl Component for CheckersChat
                     self.put_messages_into_chat(response.ok());
                 },
             Msg::ChatLogNotReceived => return false,
+            Msg::SendInvitation(to_user) =>
+                {
+                    self.state.sent_invitations.push(SentInvitation { to_user: to_user.clone() });
+                    let request = WsRequest { action: Actions::Invitation.as_str(), data: to_user };
+                    self.props.send_websocket_data.emit(request);
+                },
+            Msg::DeclineInvitation(to_user) =>
+                {
+                    if let Some(idx) = self.timeout_tasks.iter()
+                        .position(|data| data.received_invitation.from_user == to_user)
+                    {
+                        self.timeout_tasks.remove(idx);
+                    }
+
+                    if let Some(idx) = self.state.received_invitations
+                        .iter()
+                        .position(|invitation| invitation.from_user == to_user)
+                    {
+                        let dropped_invitation = self.state.received_invitations.remove(idx);
+                        let request = WsRequest { action: Actions::DeclineInvitation.as_str(), data: dropped_invitation.from_user };
+                        self.props.send_websocket_data.emit(request);
+                    }
+                },
+            Msg::AcceptInvitation(to_user) =>
+                {
+                    self.decline_invitations(&to_user);
+                    let request = WsRequest { action: Actions::AcceptInvitation.as_str(), data: to_user.clone() };
+                    self.props.send_websocket_data.emit(request);
+
+                    if let Some(user) = &self.props.user
+                    {
+                        let join_to_room_request = WsRequest
+                        {
+                            action: Actions::JoinToRoom.as_str(),
+                            data: format!("checkers_game_{}_{}", user.user_name, to_user),
+                        };
+                        self.props.send_websocket_data.emit(join_to_room_request);
+                    }
+                },
         }
         true
     }
@@ -225,7 +304,7 @@ impl Component for CheckersChat
         if self.props != props
         {
             self.props = props;
-            if let Some(response) = &self.props.websocket_chat_response
+            if let Some(response) = self.props.websocket_chat_response.clone()
             {
                 if response.action == Actions::ReceivedMessage.as_str()
                 {
@@ -238,6 +317,17 @@ impl Component for CheckersChat
                     let online_users_request = WsRequest { action: Actions::RequestOnlineUsers.as_str(), data: "".to_string() };
                     self.props.reset_websocket_chat_response.emit(());
                     self.props.send_websocket_data.emit(online_users_request);
+                    if let Some(idx) = self.state.received_invitations
+                        .iter()
+                        .position(|invitation| invitation.from_user == response.data)
+                    {
+                        self.state.received_invitations.remove(idx);
+                    }
+                    if let Some(idx) = self.timeout_tasks.iter()
+                        .position(|data| data.received_invitation.from_user == response.data)
+                    {
+                        self.timeout_tasks.remove(idx);
+                    }
                 }
                 else if response.action == Actions::ResponseOnlineUsers.as_str()
                 {
@@ -251,7 +341,44 @@ impl Component for CheckersChat
                     self.props.reset_websocket_chat_response.emit(());
                     self.props.send_websocket_data.emit(online_users_request);
                 }
-
+                else if response.action == Actions::Invitation.as_str()
+                {
+                    self.props.reset_websocket_chat_response.emit(());
+                    self.state.received_invitations.push(ReceivedInvitation { from_user: response.data.clone() });
+                    let task = self.auto_decline_invitation(response.data.clone());
+                    self.timeout_tasks.push(
+                        TimeoutTaskData
+                            {
+                                timeout_task: task,
+                                received_invitation: ReceivedInvitation { from_user: response.data.clone() }
+                            }
+                    );
+                }
+                else if response.action == Actions::DeclineInvitation.as_str()
+                {
+                    self.props.reset_websocket_chat_response.emit(());
+                    if let Some(idx) = self.state.sent_invitations
+                        .iter()
+                        .position(|invitation| &invitation.to_user == &response.data)
+                    {
+                        self.state.sent_invitations.remove(idx);
+                    }
+                }
+                else if response.action == Actions::AcceptInvitation.as_str()
+                {
+                    self.props.reset_websocket_chat_response.emit(());
+                    self.decline_invitations(&response.data);
+                    if let Some(user) = &self.props.user
+                    {
+                        let join_to_room_request = WsRequest
+                        {
+                            action: Actions::JoinToRoom.as_str(),
+                            data: format!("checkers_game_{}_{}", &response.data, user.user_name),
+                        };
+                        self.props.send_websocket_data.emit(join_to_room_request);
+                    }
+                }
+                else { return false; }
             }
             true
         }
@@ -361,61 +488,61 @@ impl Component for CheckersChat
                         </tbody>
                     </table>
                 </div>
-            //
-            //     <h3>{ "Invitations" }</h3>
-            //     <div class="checkers_game_invitation">
-            //         <table>
-            //             <tbody>
-            //             {
-            //                 for self.state.received_invitations.iter().map(|invitation: &ReceivedInvitation|
-            //                 html!
-            //                 {
-            //                     <tr>
-            //                         <td>{ &invitation.from_user }</td>
-            //                         <td>
-            //                             {
-            //                                 if true
-            //                                 {
-            //                                     let user_name = invitation.from_user.clone();
-            //                                     html!
-            //                                     {
-            //                                         <button
-            //                                             onclick=self.link.callback(move |_| WsAction::AcceptInvitation(user_name.clone()))>
-            //                                             { "Accept" }
-            //                                         </button>
-            //                                     }
-            //                                 }
-            //                                 else
-            //                                 {
-            //                                     html! {  }
-            //                                 }
-            //                             }
-            //                         </td>
-            //                         <td>
-            //                             {
-            //                                 if true
-            //                                 {
-            //                                     let user_name = invitation.from_user.clone();
-            //                                     html!
-            //                                     {
-            //                                         <button
-            //                                             onclick=self.link.callback(move |_| WsAction::DeclineInvitation(user_name.clone()))>
-            //                                             { "Decline" }
-            //                                         </button>
-            //                                     }
-            //                                 }
-            //                                 else
-            //                                 {
-            //                                     html! {  }
-            //                                 }
-            //                             }
-            //                         </td>
-            //                     </tr>
-            //                 })
-            //             }
-            //             </tbody>
-            //         </table>
-            //     </div>
+
+                <h3>{ "Invitations" }</h3>
+                <div class="checkers_game_invitation">
+                    <table>
+                        <tbody>
+                        {
+                            for self.state.received_invitations.iter().map(|invitation: &ReceivedInvitation|
+                            html!
+                            {
+                                <tr>
+                                    <td>{ &invitation.from_user }</td>
+                                    <td>
+                                        {
+                                            if true
+                                            {
+                                                let user_name = invitation.from_user.clone();
+                                                html!
+                                                {
+                                                    <button
+                                                        onclick=self.link.callback(move |_| Msg::AcceptInvitation(user_name.clone()))>
+                                                        { "Accept" }
+                                                    </button>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                html! {  }
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        {
+                                            if true
+                                            {
+                                                let user_name = invitation.from_user.clone();
+                                                html!
+                                                {
+                                                    <button
+                                                        onclick=self.link.callback(move |_| Msg::DeclineInvitation(user_name.clone()))>
+                                                        { "Decline" }
+                                                    </button>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                html! {  }
+                                            }
+                                        }
+                                    </td>
+                                </tr>
+                            })
+                        }
+                        </tbody>
+                    </table>
+                </div>
             </>
         }
     }

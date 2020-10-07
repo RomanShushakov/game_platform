@@ -97,3 +97,9 @@ pub struct SentInvitation
 {
     pub to_user: String
 }
+
+
+pub struct ReceivedInvitation
+{
+    pub from_user: String
+}

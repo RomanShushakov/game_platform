@@ -9,6 +9,8 @@ use yew::format::{Nothing, Json};
 use anyhow::Error;
 
 use yew_router::prelude::*;
+use yew_router::agent::RouteRequest;
+
 
 mod route;
 mod components;
@@ -66,6 +68,9 @@ impl Model
     {
         self.state.storage.remove(KEY);
         self.state.user = None;
+        let route = Route::<()>::from(AppRoute::HomePage);
+        let mut router = RouteAgentDispatcher::new();
+        router.send(RouteRequest::ChangeRoute(route));
     }
 
 

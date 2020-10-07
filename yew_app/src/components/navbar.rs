@@ -63,7 +63,8 @@ impl NavBar
                     // <Anchor route=AppRoute::HomePage>
                     //   <button class="button" onclick=self.link.callback(|_| Msg::SignOut)>{ "Sign out" }</button>
                     // </Anchor>
-                    <a href="/" class="anchor_button" onclick=self.link.callback(|_| Msg::SignOut)>{ "Sign out" }</a>
+                    // <a href="/" class="anchor_button" onclick=self.link.callback(|_| Msg::SignOut)>{ "Sign out" }</a>
+                    <button class="button" onclick=self.link.callback(|_| Msg::SignOut)>{ "Sign out" }</button>
                     <Button route=AppRoute::UserInfo classes="button">
                       { user.user_name.to_string() }
                     </Button>
