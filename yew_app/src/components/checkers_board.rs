@@ -1,8 +1,8 @@
 use yew::prelude::*;
+use serde_json;
 
-use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse};
-use crate::pages::PieceColor;
 
+use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse, PieceColor, CheckerPosition, GameData};
 use crate::pages::GameAction;
 
 
@@ -18,17 +18,9 @@ pub struct Props
 }
 
 
-#[derive(PartialEq, Clone)]
-struct CheckerPosition
-{
-    column: usize,
-    line: usize,
-}
-
-
 struct State
 {
-    piece_move: Vec<String>,
+    piece_move: Vec<CheckerPosition>,
     white_checkers_positions: Vec<CheckerPosition>,
     black_checkers_positions: Vec<CheckerPosition>,
     is_steps_order_defined: bool,
@@ -159,7 +151,7 @@ impl Component for CheckersBoard
                     match color
                     {
                         PieceColor::White => self.state.is_my_step = true,
-                        PieceColor::Black => self.state.is_my_step = false,
+                        _ => (),
                     }
                     self.state.is_steps_order_defined = true;
                 }
@@ -173,21 +165,31 @@ impl Component for CheckersBoard
                     {
                         if self.state.piece_move.len() == 1
                         {
-                            self.state.piece_move.push(format!("{} {}", column, line));
-
+                            self.state.piece_move.push(CheckerPosition { column, line });
+                            let data =
+                                {
+                                    serde_json::to_string(
+                                    &GameData
+                                        {
+                                            opponent_piece_color: self.props.piece_color.clone().unwrap(),
+                                            piece_previous_position: self.state.piece_move[0].to_owned(),
+                                            piece_new_position: self.state.piece_move[1].to_owned(),
+                                            captured_piece_position: None,
+                                            is_opponent_step: false,
+                                        }).unwrap()
+                                };
                             let request = WsRequest
                                 {
                                     action: GameAction::SendCheckerPieceMove.as_str(),
-                                    data: format!("{} {}", self.state.piece_move[0], self.state.piece_move[1])
+                                    data
                                 };
                             self.props.send_websocket_data.emit(request);
-                            yew::services::ConsoleService::log(&format!("{} {}", self.state.piece_move[0], self.state.piece_move[1]));
                             self.state.piece_move = Vec::new();
                             self.state.is_my_step = false;
                         }
                         else
                         {
-                            self.state.piece_move.push(format!("{} {}", column, line));
+                            self.state.piece_move.push(CheckerPosition { column, line });
                         }
                     }
                     else { return false; }
@@ -208,7 +210,12 @@ impl Component for CheckersBoard
                 {
                     self.props.reset_websocket_game_response.emit(());
                     self.state.is_my_step = true;
-                    yew::services::ConsoleService::log(&response.data);
+                    let game_data: GameData = serde_json::from_str(&response.data).unwrap();
+                    yew::services::ConsoleService::log(
+                        &format!("{:?} {:?} {:?} {:?} {:?}", &game_data.opponent_piece_color,
+                                 &game_data.piece_previous_position, &game_data.piece_new_position,
+                                &game_data.captured_piece_position, &game_data.is_opponent_step,
+                        ));
                 }
                 else { return false; }
             }

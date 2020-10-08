@@ -3,7 +3,7 @@ use anyhow::Error;
 use yew::format::Json;
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
 
-use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse};
+use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse, PieceColor};
 use crate::components::CheckersBoard;
 use crate::components::CheckersChat;
 
@@ -95,12 +95,12 @@ impl GameAction
 }
 
 
-#[derive(PartialEq, Clone)]
-pub enum PieceColor
-{
-    White,
-    Black,
-}
+// #[derive(PartialEq, Clone)]
+// pub enum PieceColor
+// {
+//     White,
+//     Black,
+// }
 
 
 #[derive(Properties, PartialEq, Clone)]

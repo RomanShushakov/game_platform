@@ -103,3 +103,30 @@ pub struct ReceivedInvitation
 {
     pub from_user: String
 }
+
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub enum PieceColor
+{
+    White,
+    Black,
+}
+
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub struct CheckerPosition
+{
+    pub column: usize,
+    pub line: usize,
+}
+
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct GameData
+{
+    pub opponent_piece_color: PieceColor,
+    pub piece_previous_position: CheckerPosition,
+    pub piece_new_position: CheckerPosition,
+    pub captured_piece_position: Option<CheckerPosition>,
+    pub is_opponent_step: bool,
+}
