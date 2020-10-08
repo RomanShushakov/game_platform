@@ -1,19 +1,38 @@
 use yew::prelude::*;
 
-use crate::types::AuthorizedUserResponse;
+use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse};
+use crate::pages::PieceColor;
+
+use crate::pages::GameAction;
 
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
-    pub move_checkers_piece: Callback<String>,
     pub user: Option<AuthorizedUserResponse>,
+    pub is_in_game: bool,
+    pub piece_color: Option<PieceColor>,
+    pub send_websocket_data: Callback<WsRequest>,
+    pub reset_websocket_game_response: Callback<()>,
+    pub websocket_game_response: Option<WsResponse>,
+}
+
+
+#[derive(PartialEq, Clone)]
+struct CheckerPosition
+{
+    column: usize,
+    line: usize,
 }
 
 
 struct State
 {
-    piece_move: Vec<String>
+    piece_move: Vec<String>,
+    white_checkers_positions: Vec<CheckerPosition>,
+    black_checkers_positions: Vec<CheckerPosition>,
+    is_steps_order_defined: bool,
+    is_my_step: bool,
 }
 
 
@@ -27,10 +46,57 @@ pub struct CheckersBoard
 
 pub enum Msg
 {
-    SendMessage,
-    Click,
-    MouseOver,
-    ShowPosition(usize, usize)
+    MoveCheckerPiece(usize, usize)
+}
+
+
+impl CheckersBoard
+{
+    fn view_black_cells(&self, column: usize, line: usize) -> Html
+    {
+        let white_checker: Html = html! { <div class="checker_white"></div> };
+        let black_checker: Html = html! { <div class="checker_black"></div> };
+
+        html!
+        {
+            if let Some(_) = self.state.white_checkers_positions
+                .iter()
+                .position(|checker_position| *checker_position == CheckerPosition { column, line })
+            {
+                html!
+                {
+                    <div
+                        class="cell black"
+                        onclick=self.link.callback(move |_| Msg::MoveCheckerPiece(column, line))>
+                        { white_checker.clone() }
+                    </div>
+                }
+            }
+            else if let Some(_) = self.state.black_checkers_positions
+                .iter()
+                .position(|checker_position| *checker_position == CheckerPosition { column, line })
+            {
+                html!
+                {
+                    <div
+                        class="cell black"
+                        onclick=self.link.callback(move |_| Msg::MoveCheckerPiece(column, line))>
+                        { black_checker.clone() }
+                    </div>
+                }
+            }
+            else
+            {
+                html!
+                {
+                    <div
+                        class="cell black"
+                        onclick=self.link.callback(move |_| Msg::MoveCheckerPiece(column, line))>
+                    </div>
+                }
+            }
+        }
+    }
 }
 
 
@@ -46,42 +112,85 @@ impl Component for CheckersBoard
         {
             props,
             link,
-            state: State { piece_move: Vec::new() }
+            state: State
+                {
+                    piece_move: Vec::new(),
+                    white_checkers_positions: vec![
+                            CheckerPosition { column: 1, line: 1 },
+                            CheckerPosition { column: 1, line: 3 },
+                            CheckerPosition { column: 2, line: 2 },
+                            CheckerPosition { column: 3, line: 1 },
+                            CheckerPosition { column: 3, line: 3 },
+                            CheckerPosition { column: 4, line: 2 },
+                            CheckerPosition { column: 5, line: 1 },
+                            CheckerPosition { column: 5, line: 3 },
+                            CheckerPosition { column: 6, line: 2 },
+                            CheckerPosition { column: 7, line: 1 },
+                            CheckerPosition { column: 7, line: 3 },
+                            CheckerPosition { column: 8, line: 2 },
+                        ],
+                    black_checkers_positions: vec![
+                            CheckerPosition { column: 1, line: 7 },
+                            CheckerPosition { column: 2, line: 6 },
+                            CheckerPosition { column: 2, line: 8 },
+                            CheckerPosition { column: 3, line: 7 },
+                            CheckerPosition { column: 4, line: 6 },
+                            CheckerPosition { column: 4, line: 8 },
+                            CheckerPosition { column: 5, line: 7 },
+                            CheckerPosition { column: 6, line: 6 },
+                            CheckerPosition { column: 6, line: 8 },
+                            CheckerPosition { column: 7, line: 7 },
+                            CheckerPosition { column: 8, line: 6 },
+                            CheckerPosition { column: 8, line: 8 },
+                        ],
+                    is_steps_order_defined: false,
+                    is_my_step: false,
+                }
         }
     }
 
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender
     {
+        if let Some(color) = &self.props.piece_color
+            {
+                if !self.state.is_steps_order_defined
+                {
+                    match color
+                    {
+                        PieceColor::White => self.state.is_my_step = true,
+                        PieceColor::Black => self.state.is_my_step = false,
+                    }
+                    self.state.is_steps_order_defined = true;
+                }
+            }
+
         match msg
         {
-            Msg::SendMessage =>
+            Msg::MoveCheckerPiece(column, line) =>
                 {
-                    // self.props.move_piece.emit("E2-E4".to_string());
-                    if let Some(user) = &self.props.user
+                    if self.state.is_my_step
                     {
-                        yew::services::ConsoleService::log(&user.user_name);
+                        if self.state.piece_move.len() == 1
+                        {
+                            self.state.piece_move.push(format!("{} {}", column, line));
+
+                            let request = WsRequest
+                                {
+                                    action: GameAction::SendCheckerPieceMove.as_str(),
+                                    data: format!("{} {}", self.state.piece_move[0], self.state.piece_move[1])
+                                };
+                            self.props.send_websocket_data.emit(request);
+                            yew::services::ConsoleService::log(&format!("{} {}", self.state.piece_move[0], self.state.piece_move[1]));
+                            self.state.piece_move = Vec::new();
+                            self.state.is_my_step = false;
+                        }
+                        else
+                        {
+                            self.state.piece_move.push(format!("{} {}", column, line));
+                        }
                     }
-                    else
-                    {
-                        yew::services::ConsoleService::log("unknown user");
-                    }
-                }
-            Msg::Click => yew::services::ConsoleService::log("clicked"),
-            Msg::MouseOver => yew::services::ConsoleService::log("mouse over"),
-            Msg::ShowPosition(letter_num, num) =>
-                {
-                    let letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
-                    if self.state.piece_move.len() == 1
-                    {
-                        self.state.piece_move.push(format!("{} {}", letters[letter_num - 1], num));
-                        yew::services::ConsoleService::log(&format!("{} {}", self.state.piece_move[0], self.state.piece_move[1]));
-                        self.state.piece_move = Vec::new();
-                    }
-                    else
-                    {
-                        self.state.piece_move.push(format!("{} {}", letters[letter_num - 1], num));
-                    }
+                    else { return false; }
                 }
         }
         true
@@ -93,6 +202,16 @@ impl Component for CheckersBoard
         if self.props != props
         {
             self.props = props;
+            if let Some(response) = self.props.websocket_game_response.clone()
+            {
+                if response.action == GameAction::ReceivedCheckerPieceMove.as_str()
+                {
+                    self.props.reset_websocket_game_response.emit(());
+                    self.state.is_my_step = true;
+                    yew::services::ConsoleService::log(&response.data);
+                }
+                else { return false; }
+            }
             true
         }
         else
@@ -105,16 +224,31 @@ impl Component for CheckersBoard
     fn view(&self) -> Html
     {
         let letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
+        let (number_sequence, letter_sequence): (Vec<usize>, Vec<usize>) =
+            {
+                if let Some(color) = &self.props.piece_color
+                {
+                    match color
+                    {
+                        PieceColor::White => ((1..=8).into_iter().rev().collect(), (1..=8).into_iter().collect()),
+                        PieceColor::Black => ((1..=8).into_iter().collect(), (1..=8).into_iter().rev().collect())
+                    }
+                }
+                else { ((1..=8).into_iter().rev().collect(), (1..=8).into_iter().collect()) }
+            };
+
+
         let letters_line: Html =
             {
-                (0..8).into_iter().map(|i: usize|
+                letter_sequence.clone().into_iter().map(|i: usize|
                 {
                     html!
                     {
-                        <div class="cell_alpha">{ letters[i] }</div>
+                        <div class="cell_alpha">{ letters[i - 1] }</div>
                     }
                 }).collect()
             };
+
 
         html!
         {
@@ -124,37 +258,29 @@ impl Component for CheckersBoard
                     { letters_line.clone() }
                 </div>
                 {
-                    for (1..=8).into_iter().rev().map(|i: usize|
+                    for number_sequence.into_iter().map(|i: usize|
                     {
                         html!
                         {
                             <div class="line">
                                 <div class="cell_num">{ i }</div>
                                 {
-                                    for (1..=8).into_iter().map(|j: usize|
+                                    for letter_sequence.clone().into_iter().map(|j: usize|
                                     {
                                         if (i + j) % 2 == 1
                                         {
-                                            html!
-                                            {
-                                                <div
-                                                    class="cell white"
-                                                    data-alpha={ j }
-                                                    data-num={ i }
-                                                    onclick=self.link.callback(move |_| Msg::ShowPosition(j, i))>
-                                                </div>
-                                            }
+                                            html! { <div class="cell white">  </div> }
                                         }
                                         else
                                         {
-                                            html!
+                                            if self.props.is_in_game
                                             {
-                                                <div
-                                                    class="cell black"
-                                                    data-alpha={ j }
-                                                    data-num={ i }
-                                                    onclick=self.link.callback(move |_| Msg::ShowPosition(j, i))>
-                                                </div>
+                                                { self.view_black_cells(j, i) }
+                                            }
+                                            else
+                                            {
+                                                html! { <div class="cell black">  </div>
+                                                }
                                             }
                                         }
                                     })

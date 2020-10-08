@@ -13,7 +13,7 @@ use crate::types::
     AuthorizedUserResponse, WsRequest, ChatMessage, OnlineUser, SentInvitation, ChatMessageResponse,
     WsResponse, ReceivedInvitation
 };
-use crate::pages::{ChatAction};
+use crate::pages::ChatAction;
 
 
 const INVITATION_WAITING_TIME: Duration = Duration::from_secs(30);
@@ -34,6 +34,10 @@ pub struct Props
     pub send_websocket_data: Callback<WsRequest>,
     pub reset_websocket_chat_response: Callback<()>,
     pub websocket_chat_response: Option<WsResponse>,
+    pub is_in_game: bool,
+    pub start_game: Callback<()>,
+    pub choose_white_color: Callback<()>,
+    pub choose_black_color: Callback<()>,
 }
 
 
@@ -294,6 +298,8 @@ impl Component for CheckersChat
                         };
                         self.props.send_websocket_data.emit(join_to_room_request);
                     }
+                    self.props.start_game.emit(());
+                    self.props.choose_white_color.emit(());
                 },
         }
         true
@@ -378,6 +384,8 @@ impl Component for CheckersChat
                         };
                         self.props.send_websocket_data.emit(join_to_room_request);
                     }
+                    self.props.start_game.emit(());
+                    self.props.choose_black_color.emit(());
                 }
                 else { return false; }
             }
@@ -440,54 +448,74 @@ impl Component for CheckersChat
                 {
                     if let Some(_) = &self.props.user
                     {
-                        html! { <button disabled=!self.props.is_connected onclick=self.link.callback(|_| Msg::SendMessage)>{ "Send" }</button> }
+                        html!
+                        {
+                            <button
+                                disabled=!(self.props.is_connected && !self.props.is_in_game)
+                                onclick=self.link.callback(|_| Msg::SendMessage)>
+                                { "Send" }
+                            </button> }
                     }
                     else
                     {
-                        html! { html! { <button disabled=true>{ "Send" }</button> } }
+                        html! { <button disabled=true>{ "Send" }</button> }
                     }
                 }
 
                 <h3>{ "Users online" }</h3>
                 <div class="checkers_game_online_users">
-                    <table>
-                        // <thead>
-                        //     <tr>
-                        //         <th>{ "User name" }</th>
-                        //     </tr>
-                        // </thead>
-                        <tbody>
+                    {
+                        if !self.props.is_in_game
                         {
-                            for self.state.online_users.iter().map(|online_user: &OnlineUser|
                             html!
                             {
-                                <tr>
-                                    <td>{ &online_user.0 }</td>
-                                    <td>
-                                        {
-                                            if true
-                                            {
-                                                let user_name = online_user.0.clone();
-                                                html!
+                            <table>
+                                // <thead>
+                                //     <tr>
+                                //         <th>{ "User name" }</th>
+                                //     </tr>
+                                // </thead>
+                                <tbody>
+                                {
+                                    for self.state.online_users.iter().map(|online_user: &OnlineUser|
+                                    html!
+                                    {
+                                        <tr>
+                                            <td>{ &online_user.0 }</td>
+                                            <td>
                                                 {
-                                                    <button
-                                                        onclick=self.link.callback(move |_| Msg::SendInvitation(user_name.clone()))
-                                                        disabled=self.invitation_status_check(&user_name)>
-                                                        { "invite to play" }
-                                                    </button>
+                                                    if true
+                                                    {
+                                                        let user_name = online_user.0.clone();
+                                                        html!
+                                                        {
+                                                            <button
+                                                                onclick=self.link.callback(move |_| Msg::SendInvitation(user_name.clone()))
+                                                                disabled=self.invitation_status_check(&user_name)>
+                                                                { "invite to play" }
+                                                            </button>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        html! {  }
+                                                    }
                                                 }
-                                            }
-                                            else
-                                            {
-                                                html! {  }
-                                            }
-                                        }
-                                    </td>
-                                </tr>
-                            })
+                                            </td>
+                                        </tr>
+                                    })
+                                }
+                                </tbody>
+                            </table>
+                            }
+
                         }
-                        </tbody>
-                    </table>
+                        else
+                        {
+                            html! {  }
+                        }
+                    }
+
                 </div>
 
                 <h3>{ "Invitations" }</h3>

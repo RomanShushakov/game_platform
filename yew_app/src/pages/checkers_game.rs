@@ -9,11 +9,12 @@ use crate::components::CheckersChat;
 
 use std::slice::Iter;
 use self::ChatAction::*;
+use self::GameAction::*;
 
 
 const WEBSOCKET_URL: &str = "ws://localhost:8080/ws/";
 // const WEBSOCKET_URL: &str = "wss://gp.stresstable.com/ws/";
-pub const GAME_NAME: &str = "checkers_game";
+const GAME_NAME: &str = "checkers_game";
 
 
 pub enum ChatAction
@@ -65,18 +66,40 @@ impl ChatAction
 }
 
 
-enum CheckersGameAction
+pub enum GameAction
 {
-    ChatAction(ChatAction)
+    SendCheckerPieceMove,
+    ReceivedCheckerPieceMove,
 }
 
 
-impl From<ChatAction> for CheckersGameAction
+impl GameAction
 {
-    fn from(action: ChatAction) -> Self
+    pub fn as_str(&self) -> String
     {
-        CheckersGameAction::ChatAction(action)
+        match self
+        {
+            GameAction::SendCheckerPieceMove => String::from("send_checker_piece_move"),
+            GameAction::ReceivedCheckerPieceMove => String::from("received_checker_piece_move"),
+        }
     }
+
+    pub fn iterator() -> Iter<'static, GameAction>
+     {
+        static ACTIONS: [GameAction; 2] =
+            [
+                SendCheckerPieceMove, ReceivedCheckerPieceMove
+            ];
+        ACTIONS.iter()
+    }
+}
+
+
+#[derive(PartialEq, Clone)]
+pub enum PieceColor
+{
+    White,
+    Black,
 }
 
 
@@ -92,6 +115,9 @@ struct State
     is_connected: bool,
     is_chat_room_defined: bool,
     websocket_chat_response: Option<WsResponse>,
+    is_in_game: bool,
+    piece_color: Option<PieceColor>,
+    websocket_game_response: Option<WsResponse>,
 }
 
 
@@ -111,7 +137,10 @@ pub enum WsAction
     ResetWebsocketChatResponse,
     Disconnect,
     Lost,
-    MoveCheckersPiece(String),
+    StartGame,
+    ChooseWhiteColor,
+    ChooseBlackColor,
+    ResetWebsocketGameResponse,
 }
 
 
@@ -147,7 +176,10 @@ impl Component for CheckersGame
                 {
                     is_connected: false,
                     is_chat_room_defined: false,
-                    websocket_chat_response: None
+                    websocket_chat_response: None,
+                    is_in_game: false,
+                    piece_color: None,
+                    websocket_game_response: None,
                 },
             websocket_task: None,
         }
@@ -179,7 +211,6 @@ impl Component for CheckersGame
                 {
                     match action
                     {
-                        WsAction::MoveCheckersPiece(position) => (),
                         WsAction::Connect =>
                             {
                                 self.state.websocket_chat_response = None;
@@ -205,13 +236,19 @@ impl Component for CheckersGame
                                 else { return false; }
                             },
                         WsAction::ResetWebsocketChatResponse => self.state.websocket_chat_response = None,
+                        WsAction::ResetWebsocketGameResponse => self.state.websocket_game_response = None,
                         WsAction::Disconnect =>
                             {
                                 self.state.websocket_chat_response = None;
                                 self.websocket_task.take();
                                 self.state.is_connected = false;
+                                self.state.is_in_game = false;
+                                self.state.piece_color = None;
                             },
                         WsAction::Lost => self.websocket_task = None,
+                        WsAction::StartGame => self.state.is_in_game = true,
+                        WsAction::ChooseWhiteColor => self.state.piece_color = Some(PieceColor::White),
+                        WsAction::ChooseBlackColor => self.state.piece_color = Some(PieceColor::Black),
                     }
                 },
             Msg::Ignore => return false,
@@ -224,6 +261,12 @@ impl Component for CheckersGame
                             .position(|action| action.as_str() == received_data.action)
                         {
                             self.state.websocket_chat_response = Some(received_data.clone());
+                        }
+
+                        if let Some(_) = GameAction::iterator()
+                            .position(|action| action.as_str() == received_data.action)
+                        {
+                            self.state.websocket_game_response = Some(received_data.clone());
                         }
                     }
                     else { return false; }
@@ -249,11 +292,14 @@ impl Component for CheckersGame
 
     fn view(&self) -> Html
     {
-        let move_checkers_piece_handle = self.link.callback(|data| Msg::WsAction(WsAction::MoveCheckersPiece(data)));
         let disconnect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Disconnect));
         let connect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Connect));
         let send_websocket_data_handle = self.link.callback(|request| Msg::WsAction(WsAction::SendWebSocketData(request)));
         let reset_websocket_chat_response_handle = self.link.callback(|_| Msg::WsAction(WsAction::ResetWebsocketChatResponse));
+        let start_game_handle = self.link.callback(|_| Msg::WsAction(WsAction::StartGame));
+        let choose_white_color_handle = self.link.callback(|_| Msg::WsAction(WsAction::ChooseWhiteColor));
+        let choose_black_color_handle = self.link.callback(|_| Msg::WsAction(WsAction::ChooseBlackColor));
+        let reset_websocket_game_response_handle = self.link.callback(|_| Msg::WsAction(WsAction::ResetWebsocketGameResponse));
 
         html!
         {
@@ -270,11 +316,26 @@ impl Component for CheckersGame
                                 send_websocket_data=send_websocket_data_handle.clone(),
                                 websocket_chat_response=self.state.websocket_chat_response.clone(),
                                 reset_websocket_chat_response=reset_websocket_chat_response_handle.clone(),
+                                is_in_game=self.state.is_in_game.clone(),
+                                start_game=start_game_handle.clone(),
+                                choose_white_color=choose_white_color_handle.clone(),
+                                choose_black_color=choose_black_color_handle.clone(),
                              />
                         </div>
 
                         {
-                            html! { <CheckersBoard user=self.props.user.clone() move_checkers_piece=move_checkers_piece_handle.clone() /> }
+                            html!
+                            {
+                                <CheckersBoard
+                                    user=self.props.user.clone(),
+                                    is_in_game=self.state.is_in_game.clone(),
+                                    send_websocket_data=send_websocket_data_handle.clone(),
+                                    piece_color=self.state.piece_color.clone(),
+                                    websocket_game_response=self.state.websocket_game_response.clone(),
+                                    reset_websocket_game_response=reset_websocket_game_response_handle.clone(),
+
+                                />
+                            }
                         }
 
                     </div>

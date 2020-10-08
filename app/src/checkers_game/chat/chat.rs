@@ -293,6 +293,18 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         action: action.to_owned(),
                                     });
                                 },
+                            "send_checker_piece_move" =>
+                                {
+                                    let msg = data.to_owned();
+                                    println!("{}", msg);
+                                    // send message to chat server
+                                    self.addr.do_send(server::GameMessage
+                                    {
+                                        id: self.id,
+                                        msg,
+                                        room: self.room.clone(),
+                                    })
+                                },
                             _ =>
                                 {
                                     let response = WsResponse

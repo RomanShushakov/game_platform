@@ -94,6 +94,21 @@ pub struct Invitation
 }
 
 
+/// Send message to specific room
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct GameMessage
+{
+    /// Id of the client session
+    pub id: usize,
+    /// Peer message
+    pub msg: String,
+    /// Room name
+    pub room: String,
+}
+
+
+
 #[derive(Clone)]
 struct SessionData
 {
@@ -410,5 +425,17 @@ impl Handler<Invitation> for ChatServer
                 self.process_invitation(&msg.room, &user_name, &msg.to_user, &msg.action);
             }
         }
+    }
+}
+
+
+/// Handler for Game message.
+impl Handler<GameMessage> for ChatServer
+{
+    type Result = ();
+
+    fn handle(&mut self, msg: GameMessage, _: &mut Context<Self>)
+    {
+        self.send_message(&msg.room, "received_checker_piece_move", msg.msg.as_str(),  msg.id);
     }
 }
