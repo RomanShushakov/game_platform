@@ -108,6 +108,17 @@ pub struct GameMessage
 }
 
 
+/// Leave current game and join to chat room, if room does not exists create new one.
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct LeaveGameMessage
+{
+    /// Client id
+    pub id: usize,
+    /// Room name
+    pub name: String,
+}
+
 
 #[derive(Clone)]
 struct SessionData
@@ -437,5 +448,67 @@ impl Handler<GameMessage> for ChatServer
     fn handle(&mut self, msg: GameMessage, _: &mut Context<Self>)
     {
         self.send_message(&msg.room, "received_checker_piece_move", msg.msg.as_str(),  msg.id);
+    }
+}
+
+
+/// Leave current game, join to chat room room, send leave game message to old room
+/// send join message to new room
+impl Handler<LeaveGameMessage> for ChatServer
+{
+    type Result = ();
+
+    fn handle(&mut self, msg: LeaveGameMessage, _: &mut Context<Self>)
+    {
+        let LeaveGameMessage { id, name } = msg;
+        let mut rooms = Vec::new();
+
+        // remove session from all rooms
+        for (n, sessions) in &mut self.rooms
+        {
+            if sessions.remove(&id)
+            {
+                rooms.push(n.to_owned());
+            }
+        }
+
+        let user_name =
+            {
+                if let Some(session_data) = self.sessions.get(&id)
+                {
+                    session_data.user_name.clone()
+                }
+                else
+                {
+                    None
+                }
+            };
+
+        match user_name
+        {
+            Some(user_name) =>
+                {
+                    // send message to other users
+                    for room in rooms
+                    {
+                        self.send_message(&room, "received_leave_game_message", &user_name, 0);
+                    }
+                },
+            None =>
+                {
+                    // send message to other users
+                    for room in rooms
+                    {
+                        self.send_message(&room, "received_leave_game_message", "Someone left game", 0);
+                    }
+                }
+        }
+
+        self.rooms
+            .entry(name.clone())
+            .or_insert(HashSet::new())
+            .insert(id);
+
+        self.send_message(&name, "connect", "Someone connected", id);
     }
 }

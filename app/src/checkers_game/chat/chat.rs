@@ -305,6 +305,22 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession
                                         room: self.room.clone(),
                                     })
                                 },
+                            "send_leave_game_message" =>
+                                {
+                                    self.room = data.to_owned();
+                                    self.addr.do_send(server::LeaveGameMessage
+                                    {
+                                        id: self.id,
+                                        name: self.room.clone(),
+                                    });
+
+                                    let response = WsResponse
+                                        {
+                                            action: "join_to_room".to_owned(),
+                                            data: "joined".to_owned()
+                                        };
+                                    ctx.text(serde_json::to_string(&response).unwrap());
+                                },
                             _ =>
                                 {
                                     let response = WsResponse

@@ -208,7 +208,6 @@ impl Component for CheckersChat
             Msg::Disconnect =>
                 {
                     self.state.online_users = HashSet::new();
-
                     for data in &self.timeout_tasks
                     {
                         let from_user = data.received_invitation.from_user.clone();
@@ -288,7 +287,6 @@ impl Component for CheckersChat
                     self.decline_invitations(&to_user);
                     let request = WsRequest { action: ChatAction::AcceptInvitation.as_str(), data: to_user.clone() };
                     self.props.send_websocket_data.emit(request);
-
                     if let Some(user) = &self.props.user
                     {
                         let join_to_room_request = WsRequest
@@ -339,7 +337,10 @@ impl Component for CheckersChat
                 else if response.action == ChatAction::ResponseOnlineUsers.as_str()
                 {
                     self.props.reset_websocket_chat_response.emit(());
-                    self.state.online_users.insert(OnlineUser(response.data.clone()));
+                    if !self.props.is_in_game
+                    {
+                        self.state.online_users.insert(OnlineUser(response.data.clone()));
+                    }
                 }
                 else if response.action == ChatAction::SomeoneConnected.as_str() // && response.data == "Someone connected"
                 {
@@ -454,7 +455,8 @@ impl Component for CheckersChat
                                 disabled=!(self.props.is_connected && !self.props.is_in_game)
                                 onclick=self.link.callback(|_| Msg::SendMessage)>
                                 { "Send" }
-                            </button> }
+                            </button>
+                        }
                     }
                     else
                     {

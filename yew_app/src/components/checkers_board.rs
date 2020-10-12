@@ -3,7 +3,7 @@ use serde_json;
 
 
 use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse, PieceColor, CheckerPosition, GameData};
-use crate::pages::GameAction;
+use crate::pages::{GameAction, GAME_NAME, ChatAction};
 
 
 #[derive(Properties, PartialEq, Clone)]
@@ -15,6 +15,14 @@ pub struct Props
     pub send_websocket_data: Callback<WsRequest>,
     pub reset_websocket_game_response: Callback<()>,
     pub websocket_game_response: Option<WsResponse>,
+    pub leave_game: Callback<()>,
+}
+
+
+enum GameResult
+{
+    Win,
+    Lose,
 }
 
 
@@ -25,6 +33,50 @@ struct State
     black_checkers_positions: Vec<CheckerPosition>,
     is_steps_order_defined: bool,
     is_my_step: bool,
+    game_result: Option<GameResult>,
+}
+
+
+impl State
+{
+    fn init() -> Self
+    {
+        State
+        {
+            piece_move: Vec::new(),
+            white_checkers_positions: vec![
+                    CheckerPosition { column: 1, line: 1 },
+                    CheckerPosition { column: 1, line: 3 },
+                    CheckerPosition { column: 2, line: 2 },
+                    CheckerPosition { column: 3, line: 1 },
+                    CheckerPosition { column: 3, line: 3 },
+                    CheckerPosition { column: 4, line: 2 },
+                    CheckerPosition { column: 5, line: 1 },
+                    CheckerPosition { column: 5, line: 3 },
+                    CheckerPosition { column: 6, line: 2 },
+                    CheckerPosition { column: 7, line: 1 },
+                    CheckerPosition { column: 7, line: 3 },
+                    CheckerPosition { column: 8, line: 2 },
+                ],
+            black_checkers_positions: vec![
+                    CheckerPosition { column: 1, line: 7 },
+                    CheckerPosition { column: 2, line: 6 },
+                    CheckerPosition { column: 2, line: 8 },
+                    CheckerPosition { column: 3, line: 7 },
+                    CheckerPosition { column: 4, line: 6 },
+                    CheckerPosition { column: 4, line: 8 },
+                    CheckerPosition { column: 5, line: 7 },
+                    CheckerPosition { column: 6, line: 6 },
+                    CheckerPosition { column: 6, line: 8 },
+                    CheckerPosition { column: 7, line: 7 },
+                    CheckerPosition { column: 8, line: 6 },
+                    CheckerPosition { column: 8, line: 8 },
+                ],
+            is_steps_order_defined: false,
+            is_my_step: false,
+            game_result: None,
+        }
+    }
 }
 
 
@@ -38,7 +90,8 @@ pub struct CheckersBoard
 
 pub enum Msg
 {
-    MoveCheckerPiece(usize, usize)
+    MoveCheckerPiece(usize, usize),
+    LeaveGame,
 }
 
 
@@ -46,8 +99,31 @@ impl CheckersBoard
 {
     fn view_black_cells(&self, column: usize, line: usize) -> Html
     {
-        let white_checker: Html = html! { <div class="checker_white"></div> };
-        let black_checker: Html = html! { <div class="checker_black"></div> };
+        yew::services::ConsoleService::log("black cells called");
+        let white_checker: Html =
+            {
+                if let Some(color) = &self.props.piece_color
+                {
+                    match color
+                    {
+                        PieceColor::White => html! { <div class="checker_my_white"></div> },
+                        PieceColor::Black => html! { <div class="checker_white"></div> },
+                    }
+                }
+                else { html! { <div class="checker_white"></div> } }
+            };
+        let black_checker: Html =
+            {
+                if let Some(color) = &self.props.piece_color
+                {
+                    match color
+                    {
+                        PieceColor::White => html! { <div class="checker_black"></div> },
+                        PieceColor::Black => html! { <div class="checker_my_black"></div> },
+                    }
+                }
+                else { html! { <div class="checker_black"></div> } }
+            };
 
         html!
         {
@@ -89,6 +165,56 @@ impl CheckersBoard
             }
         }
     }
+
+
+    fn checkers_board_header_view(&self) -> Html
+    {
+        if let Some(result) = &self.state.game_result
+        {
+            match result
+            {
+                GameResult::Win =>
+                    {
+                        html!
+                        {
+                            <div class="container">
+                                <p>{ "You win !!!" }</p>
+                                <button
+                                    disabled=!self.props.is_in_game
+                                    onclick=self.link.callback(|_| Msg::LeaveGame)>
+                                    { "Quit Game" }
+                                </button>
+                            </div>
+                        }
+                    },
+                GameResult::Lose =>
+                    {
+                        html!
+                        {
+                            <div class="container">
+                                <p>{ "You lose :-(" }</p>
+                                <button disabled=!self.props.is_in_game>
+                                    { "Quit Game" }
+                                </button>
+                            </div>
+                        }
+                    },
+            }
+        }
+        else
+        {
+            html!
+            {
+                <div class="container">
+                    <button
+                        disabled=!self.props.is_in_game
+                        onclick=self.link.callback(|_| Msg::LeaveGame)>
+                        { "Surrender" }
+                    </button>
+                </div>
+            }
+        }
+    }
 }
 
 
@@ -104,40 +230,7 @@ impl Component for CheckersBoard
         {
             props,
             link,
-            state: State
-                {
-                    piece_move: Vec::new(),
-                    white_checkers_positions: vec![
-                            CheckerPosition { column: 1, line: 1 },
-                            CheckerPosition { column: 1, line: 3 },
-                            CheckerPosition { column: 2, line: 2 },
-                            CheckerPosition { column: 3, line: 1 },
-                            CheckerPosition { column: 3, line: 3 },
-                            CheckerPosition { column: 4, line: 2 },
-                            CheckerPosition { column: 5, line: 1 },
-                            CheckerPosition { column: 5, line: 3 },
-                            CheckerPosition { column: 6, line: 2 },
-                            CheckerPosition { column: 7, line: 1 },
-                            CheckerPosition { column: 7, line: 3 },
-                            CheckerPosition { column: 8, line: 2 },
-                        ],
-                    black_checkers_positions: vec![
-                            CheckerPosition { column: 1, line: 7 },
-                            CheckerPosition { column: 2, line: 6 },
-                            CheckerPosition { column: 2, line: 8 },
-                            CheckerPosition { column: 3, line: 7 },
-                            CheckerPosition { column: 4, line: 6 },
-                            CheckerPosition { column: 4, line: 8 },
-                            CheckerPosition { column: 5, line: 7 },
-                            CheckerPosition { column: 6, line: 6 },
-                            CheckerPosition { column: 6, line: 8 },
-                            CheckerPosition { column: 7, line: 7 },
-                            CheckerPosition { column: 8, line: 6 },
-                            CheckerPosition { column: 8, line: 8 },
-                        ],
-                    is_steps_order_defined: false,
-                    is_my_step: false,
-                }
+            state: State::init(),
         }
     }
 
@@ -166,6 +259,38 @@ impl Component for CheckersBoard
                         if self.state.piece_move.len() == 1
                         {
                             self.state.piece_move.push(CheckerPosition { column, line });
+                            match self.props.piece_color
+                            {
+                                Some(PieceColor::White) =>
+                                    {
+                                        if let Some(idx) = self.state.white_checkers_positions
+                                            .iter()
+                                            .position(
+                                                |position|
+                                                    position.column == self.state.piece_move[0].column
+                                                        &&
+                                                    position.line == self.state.piece_move[0].line)
+                                        {
+                                            self.state.white_checkers_positions[idx].column = self.state.piece_move[1].column;
+                                            self.state.white_checkers_positions[idx].line = self.state.piece_move[1].line;
+                                        }
+                                    },
+                                Some(PieceColor::Black) =>
+                                    {
+                                        if let Some(idx) = self.state.black_checkers_positions
+                                            .iter()
+                                            .position(
+                                                |position|
+                                                    position.column == self.state.piece_move[0].column
+                                                        &&
+                                                    position.line == self.state.piece_move[0].line)
+                                        {
+                                            self.state.black_checkers_positions[idx].column = self.state.piece_move[1].column;
+                                            self.state.black_checkers_positions[idx].line = self.state.piece_move[1].line;
+                                        }
+                                    },
+                                None => (),
+                            }
                             let data =
                                 {
                                     serde_json::to_string(
@@ -193,6 +318,18 @@ impl Component for CheckersBoard
                         }
                     }
                     else { return false; }
+                },
+            Msg::LeaveGame =>
+                {
+                    self.state = State::init();
+                    self.props.leave_game.emit(());
+                    let request = WsRequest { action: GameAction::SendLeaveGameMessage.as_str(), data: GAME_NAME.to_string() };
+                    self.props.send_websocket_data.emit(request);
+                    if let Some(user) = &self.props.user
+                    {
+                        let request_online_users = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: format!("{}", user.user_name) };
+                        self.props.send_websocket_data.emit(request_online_users);
+                    }
                 }
         }
         true
@@ -211,11 +348,43 @@ impl Component for CheckersBoard
                     self.props.reset_websocket_game_response.emit(());
                     self.state.is_my_step = true;
                     let game_data: GameData = serde_json::from_str(&response.data).unwrap();
-                    yew::services::ConsoleService::log(
-                        &format!("{:?} {:?} {:?} {:?} {:?}", &game_data.opponent_piece_color,
-                                 &game_data.piece_previous_position, &game_data.piece_new_position,
-                                &game_data.captured_piece_position, &game_data.is_opponent_step,
-                        ));
+
+                    match game_data.opponent_piece_color
+                    {
+                        PieceColor::White =>
+                            {
+                                if let Some(idx) = self.state.white_checkers_positions
+                                    .iter()
+                                    .position(
+                                        |position|
+                                            position.column == game_data.piece_previous_position.column
+                                                &&
+                                            position.line == game_data.piece_previous_position.line)
+                                {
+                                    self.state.white_checkers_positions[idx].column = game_data.piece_new_position.column;
+                                    self.state.white_checkers_positions[idx].line = game_data.piece_new_position.line;
+                                }
+                            },
+                        PieceColor::Black =>
+                            {
+                                if let Some(idx) = self.state.black_checkers_positions
+                                    .iter()
+                                    .position(
+                                        |position|
+                                            position.column == game_data.piece_previous_position.column
+                                                &&
+                                            position.line == game_data.piece_previous_position.line)
+                                {
+                                    self.state.black_checkers_positions[idx].column = game_data.piece_new_position.column;
+                                    self.state.black_checkers_positions[idx].line = game_data.piece_new_position.line;
+                                }
+                            },
+                    }
+
+                }
+                else if response.action == GameAction::ReceivedLeaveGameMessage.as_str()
+                {
+                    self.state.game_result = Some(GameResult::Win);
                 }
                 else { return false; }
             }
@@ -260,6 +429,9 @@ impl Component for CheckersBoard
         html!
         {
             <div class="checkers_board_container">
+
+                { self.checkers_board_header_view() }
+
                 <div class="line">
                     <div class="cell_num">   </div>
                     { letters_line.clone() }
@@ -286,8 +458,7 @@ impl Component for CheckersBoard
                                             }
                                             else
                                             {
-                                                html! { <div class="cell black">  </div>
-                                                }
+                                                html! { <div class="cell black">  </div> }
                                             }
                                         }
                                     })

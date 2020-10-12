@@ -14,7 +14,7 @@ use self::GameAction::*;
 
 const WEBSOCKET_URL: &str = "ws://localhost:8080/ws/";
 // const WEBSOCKET_URL: &str = "wss://gp.stresstable.com/ws/";
-const GAME_NAME: &str = "checkers_game";
+pub const GAME_NAME: &str = "checkers_game";
 
 
 pub enum ChatAction
@@ -70,6 +70,8 @@ pub enum GameAction
 {
     SendCheckerPieceMove,
     ReceivedCheckerPieceMove,
+    SendLeaveGameMessage,
+    ReceivedLeaveGameMessage,
 }
 
 
@@ -81,26 +83,21 @@ impl GameAction
         {
             GameAction::SendCheckerPieceMove => String::from("send_checker_piece_move"),
             GameAction::ReceivedCheckerPieceMove => String::from("received_checker_piece_move"),
+            GameAction::SendLeaveGameMessage => String::from("send_leave_game_message"),
+            GameAction::ReceivedLeaveGameMessage => String::from("received_leave_game_message"),
         }
     }
 
     pub fn iterator() -> Iter<'static, GameAction>
      {
-        static ACTIONS: [GameAction; 2] =
+        static ACTIONS: [GameAction; 4] =
             [
-                SendCheckerPieceMove, ReceivedCheckerPieceMove
+                SendCheckerPieceMove, ReceivedCheckerPieceMove, SendLeaveGameMessage,
+                ReceivedLeaveGameMessage
             ];
         ACTIONS.iter()
     }
 }
-
-
-// #[derive(PartialEq, Clone)]
-// pub enum PieceColor
-// {
-//     White,
-//     Black,
-// }
 
 
 #[derive(Properties, PartialEq, Clone)]
@@ -141,6 +138,7 @@ pub enum WsAction
     ChooseWhiteColor,
     ChooseBlackColor,
     ResetWebsocketGameResponse,
+    LeaveGame,
 }
 
 
@@ -249,6 +247,12 @@ impl Component for CheckersGame
                         WsAction::StartGame => self.state.is_in_game = true,
                         WsAction::ChooseWhiteColor => self.state.piece_color = Some(PieceColor::White),
                         WsAction::ChooseBlackColor => self.state.piece_color = Some(PieceColor::Black),
+                        WsAction::LeaveGame =>
+                            {
+                                self.state.is_in_game = false;
+                                self.state.piece_color = None;
+                                self.state.websocket_game_response = None;
+                            },
                     }
                 },
             Msg::Ignore => return false,
@@ -300,6 +304,7 @@ impl Component for CheckersGame
         let choose_white_color_handle = self.link.callback(|_| Msg::WsAction(WsAction::ChooseWhiteColor));
         let choose_black_color_handle = self.link.callback(|_| Msg::WsAction(WsAction::ChooseBlackColor));
         let reset_websocket_game_response_handle = self.link.callback(|_| Msg::WsAction(WsAction::ResetWebsocketGameResponse));
+        let leave_game_handle = self.link.callback(|_| Msg::WsAction(WsAction::LeaveGame));
 
         html!
         {
@@ -333,7 +338,7 @@ impl Component for CheckersGame
                                     piece_color=self.state.piece_color.clone(),
                                     websocket_game_response=self.state.websocket_game_response.clone(),
                                     reset_websocket_game_response=reset_websocket_game_response_handle.clone(),
-
+                                    leave_game=leave_game_handle.clone(),
                                 />
                             }
                         }
