@@ -232,6 +232,17 @@ h3 {
 }
 
 
+.checker_my_white_active {
+    width: 40px;
+    height: 40px;
+    background-color: rgb(255, 249, 160);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 20px;
+}
+
+
 .checker_my_white:hover {
     background-color: rgb(255, 249, 160);
 }
@@ -250,6 +261,16 @@ h3 {
     width: 40px;
     height: 40px;
     background-color: rgb(0, 0, 0);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 20px;
+}
+
+.checker_my_black_active {
+    width: 40px;
+    height: 40px;
+    background-color: rgb(23, 0, 155);
     display: flex;
     justify-content: center;
     align-items: center;

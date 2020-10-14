@@ -105,7 +105,7 @@ pub struct ReceivedInvitation
 }
 
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, Eq, Hash)]
 pub enum PieceColor
 {
     White,
@@ -113,11 +113,36 @@ pub enum PieceColor
 }
 
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+impl PieceColor
+{
+    pub fn opposite(&self) -> Self
+    {
+        if *self == PieceColor::White
+        {
+            PieceColor::Black
+        }
+        else
+        {
+            PieceColor::White
+        }
+    }
+}
+
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct CheckerPosition
 {
     pub column: usize,
     pub line: usize,
+}
+
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub struct CheckerPiece
+{
+    pub id: usize,
+    pub is_crowned: bool,
+    pub position: CheckerPosition,
 }
 
 
@@ -129,4 +154,13 @@ pub struct GameData
     pub piece_new_position: CheckerPosition,
     pub captured_piece_position: Option<CheckerPosition>,
     pub is_opponent_step: bool,
+}
+
+
+#[derive(Debug)]
+pub struct AllowableMove
+{
+    pub checker_id: usize,
+    pub next_position: CheckerPosition,
+    pub captured_piece_position: Option<CheckerPosition>
 }
