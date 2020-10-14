@@ -270,162 +270,77 @@ impl CheckersBoard
         {
             for checker in self.state.checker_pieces.get(&color).unwrap()
             {
-                if checker.is_crowned
+                for opponent_checker in self.state.checker_pieces.get(&color.opposite()).unwrap()
                 {
-                    for opponent_checker in self.state.checker_pieces.get(&color.opposite()).unwrap()
+                    let first_position = CheckerPosition { column: checker.position.column + 1,  line: checker.position.line + 1 };
+                    if opponent_checker.position == first_position
                     {
-                        let first_position = CheckerPosition { column: checker.position.column + 1,  line: checker.position.line + 1 };
-                        if opponent_checker.position == first_position
+                        let second_position = CheckerPosition { column: checker.position.column + 2,  line: checker.position.line + 2 };
+                        if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            is_allowable_position(&second_position)
                         {
-                            let second_position = CheckerPosition { column: checker.position.column + 2,  line: checker.position.line + 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
+                            checkers.push(
+                                AllowableMove
+                                {
+                                    checker_id: checker.id,
+                                    captured_piece_position: Some(first_position),
+                                    next_position: second_position
+                                })
                         }
-                        let first_position = CheckerPosition { column: checker.position.column - 1,  line: checker.position.line + 1 };
-                        if opponent_checker.position == first_position
-                        {
-                            let second_position = CheckerPosition { column: checker.position.column - 2,  line: checker.position.line + 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
-                        }
-                        let first_position = CheckerPosition { column: checker.position.column - 1,  line: checker.position.line - 1 };
-                        if opponent_checker.position == first_position
-                        {
-                            let second_position = CheckerPosition { column: checker.position.column - 2,  line: checker.position.line - 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
-                        }
-                        let first_position = CheckerPosition { column: checker.position.column + 1,  line: checker.position.line - 1 };
-                        if opponent_checker.position == first_position
-                        {
-                            let second_position = CheckerPosition { column: checker.position.column + 2,  line: checker.position.line - 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
-                        }
-
                     }
-                }
-                else if color == &PieceColor::White
-                {
-                    for opponent_checker in self.state.checker_pieces.get(&color.opposite()).unwrap()
+                    let first_position = CheckerPosition { column: checker.position.column - 1,  line: checker.position.line + 1 };
+                    if opponent_checker.position == first_position
                     {
-                        let first_position = CheckerPosition { column: checker.position.column + 1,  line: checker.position.line + 1 };
-                        if opponent_checker.position == first_position
+                        let second_position = CheckerPosition { column: checker.position.column - 2,  line: checker.position.line + 2 };
+                        if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            is_allowable_position(&second_position)
                         {
-                            let second_position = CheckerPosition { column: checker.position.column + 2,  line: checker.position.line + 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
+                            checkers.push(
+                                AllowableMove
+                                {
+                                    checker_id: checker.id,
+                                    captured_piece_position: Some(first_position),
+                                    next_position: second_position
+                                })
                         }
-                        let first_position = CheckerPosition { column: checker.position.column - 1,  line: checker.position.line + 1 };
-                        if opponent_checker.position == first_position
+                    }
+                    let first_position = CheckerPosition { column: checker.position.column - 1,  line: checker.position.line - 1 };
+                    if opponent_checker.position == first_position
+                    {
+                        let second_position = CheckerPosition { column: checker.position.column - 2,  line: checker.position.line - 2 };
+                        if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            is_allowable_position(&second_position)
                         {
-                            let second_position = CheckerPosition { column: checker.position.column - 2,  line: checker.position.line + 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
+                            checkers.push(
+                                AllowableMove
+                                {
+                                    checker_id: checker.id,
+                                    captured_piece_position: Some(first_position),
+                                    next_position: second_position
+                                })
+                        }
+                    }
+                    let first_position = CheckerPosition { column: checker.position.column + 1,  line: checker.position.line - 1 };
+                    if opponent_checker.position == first_position
+                    {
+                        let second_position = CheckerPosition { column: checker.position.column + 2,  line: checker.position.line - 2 };
+                        if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
+                            is_allowable_position(&second_position)
+                        {
+                            checkers.push(
+                                AllowableMove
+                                {
+                                    checker_id: checker.id,
+                                    captured_piece_position: Some(first_position),
+                                    next_position: second_position
+                                })
                         }
                     }
                 }
-                else
-                {
-                    for opponent_checker in self.state.checker_pieces.get(&color.opposite()).unwrap()
-                    {
-                        let first_position = CheckerPosition { column: checker.position.column + 1,  line: checker.position.line - 1 };
-                        if opponent_checker.position == first_position
-                        {
-                            let second_position = CheckerPosition { column: checker.position.column + 2,  line: checker.position.line - 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
-                        }
-                        let first_position = CheckerPosition { column: checker.position.column - 1,  line: checker.position.line - 1 };
-                        if opponent_checker.position == first_position
-                        {
-                            let second_position = CheckerPosition { column: checker.position.column - 2,  line: checker.position.line - 2 };
-                            if !self.state.checker_pieces.get(&color).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                !self.state.checker_pieces.get(&color.opposite()).unwrap().iter().any(|piece| piece.position == second_position) &&
-                                is_allowable_position(&second_position)
-                            {
-                                checkers.push(
-                                    AllowableMove
-                                    {
-                                        checker_id: checker.id,
-                                        captured_piece_position: Some(first_position),
-                                        next_position: second_position
-                                    })
-                            }
-                        }
-                    }
-                }
-
 
             }
             if !checkers.is_empty()
@@ -649,6 +564,22 @@ impl Component for CheckersBoard
                                                         }
 
                                                     }
+
+                                                    self.state.is_my_step =
+                                                        {
+                                                            if let Some(capturing_moves) = self.can_capturing_checkers()
+                                                            {
+                                                                if let Some(idx) = capturing_moves
+                                                                    .iter()
+                                                                    .position(|allowable_move| allowable_move.checker_id == allowable_moves[allow_idx].checker_id)
+                                                                {
+                                                                    true
+                                                                }
+                                                                else { false }
+                                                            }
+                                                            else { false }
+                                                        };
+
                                                     let data =
                                                         {
                                                             serde_json::to_string(
@@ -658,7 +589,7 @@ impl Component for CheckersBoard
                                                                     piece_previous_position: self.state.piece_move[0].to_owned(),
                                                                     piece_new_position: self.state.piece_move[1].to_owned(),
                                                                     captured_piece_position: allowable_moves[allow_idx].captured_piece_position.clone(),
-                                                                    is_opponent_step: false,
+                                                                    is_opponent_step: self.state.is_my_step,
                                                                 }).unwrap()
                                                         };
                                                     let request = WsRequest
@@ -668,7 +599,7 @@ impl Component for CheckersBoard
                                                     };
                                                     self.props.send_websocket_data.emit(request);
                                                     self.state.piece_move = Vec::new();
-                                                    self.state.is_my_step = false;
+                                                    // self.state.is_my_step = false;
                                                 }
                                                 else { return false; }
                                             }
