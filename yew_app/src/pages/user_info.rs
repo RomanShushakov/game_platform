@@ -238,7 +238,7 @@ impl Component for UserInfo
                     {
                         self.link.send_message(Msg::UpdateUser(updated_user_data));
                     }
-                    else { return false }
+                    else { return false; }
                 },
             Msg::UpdateUser(updated_user_data) =>
                 {
@@ -247,7 +247,7 @@ impl Component for UserInfo
                         let task = self.update_user(updated_user_data, token);
                         self.fetch_task = Some(task);
                     }
-                    else { return false }
+                    else { return false; }
                 },
             Msg::SuccessfulUpdate(message) =>
                 {

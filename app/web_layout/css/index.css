@@ -166,6 +166,7 @@ h3 {
     flex-direction: row;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+    margin: auto;
 }
 
 
@@ -173,7 +174,8 @@ h3 {
     /* width: 1366px; */
     box-sizing: content-box;
     margin: 0 auto;
-    padding-top: 20px;
+    padding: 2.9rem;
+
 }
 
 .cell {
@@ -212,34 +214,34 @@ h3 {
 }
 
 .checker_white {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background-color: rgb(255, 255, 255);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 .checker_my_white {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background-color: rgb(255, 255, 255);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 
 .checker_my_white_active {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background-color: rgb(255, 249, 160);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 
@@ -248,35 +250,48 @@ h3 {
 }
 
 .checker_black {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background-color: rgb(0, 0, 0);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 .checker_my_black {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background-color: rgb(0, 0, 0);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 .checker_my_black_active {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background-color: rgb(23, 0, 155);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 .checker_my_black:hover {
     background-color: rgb(23, 0, 155);
+}
+
+.checker_board_header_container {
+    display: flex;
+    align-items: center;
+    box-sizing: content-box;
+    flex-direction: row;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.checker_board_header_button {
+    margin-left: auto;
 }

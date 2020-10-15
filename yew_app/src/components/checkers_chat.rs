@@ -471,46 +471,45 @@ impl Component for CheckersChat
                         {
                             html!
                             {
-                            <table>
-                                // <thead>
-                                //     <tr>
-                                //         <th>{ "User name" }</th>
-                                //     </tr>
-                                // </thead>
-                                <tbody>
-                                {
-                                    for self.state.online_users.iter().map(|online_user: &OnlineUser|
-                                    html!
+                                <table>
+                                    // <thead>
+                                    //     <tr>
+                                    //         <th>{ "User name" }</th>
+                                    //     </tr>
+                                    // </thead>
+                                    <tbody>
                                     {
-                                        <tr>
-                                            <td>{ &online_user.0 }</td>
-                                            <td>
-                                                {
-                                                    if true
+                                        for self.state.online_users.iter().map(|online_user: &OnlineUser|
+                                        html!
+                                        {
+                                            <tr>
+                                                <td>{ &online_user.0 }</td>
+                                                <td>
                                                     {
-                                                        let user_name = online_user.0.clone();
-                                                        html!
+                                                        if true
                                                         {
-                                                            <button
-                                                                onclick=self.link.callback(move |_| Msg::SendInvitation(user_name.clone()))
-                                                                disabled=self.invitation_status_check(&user_name)>
-                                                                { "invite to play" }
-                                                            </button>
+                                                            let user_name = online_user.0.clone();
+                                                            html!
+                                                            {
+                                                                <button
+                                                                    onclick=self.link.callback(move |_| Msg::SendInvitation(user_name.clone()))
+                                                                    disabled=self.invitation_status_check(&user_name)>
+                                                                    { "invite to play" }
+                                                                </button>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            html! {  }
                                                         }
                                                     }
-                                                    else
-                                                    {
-                                                        html! {  }
-                                                    }
-                                                }
-                                            </td>
-                                        </tr>
-                                    })
-                                }
-                                </tbody>
-                            </table>
+                                                </td>
+                                            </tr>
+                                        })
+                                    }
+                                    </tbody>
+                                </table>
                             }
-
                         }
                         else
                         {
