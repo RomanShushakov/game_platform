@@ -34,6 +34,7 @@ services:
 
   app:
     build: app
+    container_name: game_platform
     environment:
       DATABASE_URL: postgresql://actix_pg_user_test:actix_pg_pass_test@postgres_db:5432/actix_pg_db_test
       SECRET_KEY: secret_key

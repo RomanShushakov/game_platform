@@ -222,7 +222,7 @@ impl Component for CheckersChat
                 },
             Msg::Connect =>
                 {
-                    self.link.send_message(Msg::ExtractChatLog);
+                    // self.link.send_message(Msg::ExtractChatLog);
                     self.props.connect.emit(());
                 },
             Msg::UpdateEditMessage(e) => self.state.message = Some(e),

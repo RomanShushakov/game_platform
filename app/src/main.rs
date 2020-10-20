@@ -29,6 +29,9 @@ use actix::*;
 mod email;
 
 
+const TOKEN_VALIDITY_TIME: i64 = 500;
+
+
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 async fn register_user(pool: web::Data<DbPool>, user_data: web::Json<models::UserRegisterData>)
@@ -78,7 +81,7 @@ async fn sign_in_user(pool: web::Data<DbPool>, user_data: web::Json<models::User
         let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
         let key = secret_key.as_bytes();
 
-        let expiration_date = Utc::now() + Duration::minutes(300);
+        let expiration_date = Utc::now() + Duration::minutes(TOKEN_VALIDITY_TIME);
         let claims = models::Claims
             { user_name: user.user_name.to_string(), email: user.email.to_string(), exp: expiration_date.timestamp() as usize };
         let token = encode(&Header::default(), &claims,&EncodingKey::from_secret(key)).unwrap();
