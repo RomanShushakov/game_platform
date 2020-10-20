@@ -11,10 +11,11 @@ use std::slice::Iter;
 use self::ChatAction::*;
 use self::GameAction::*;
 
+use dotenv_codegen::dotenv;
 
-const WEBSOCKET_URL: &str = "ws://localhost:8080/ws/";
-// const WEBSOCKET_URL: &str = "wss://gp.stresstable.com/ws/";
+
 pub const GAME_NAME: &str = "checkers_game";
+pub const WEBSOCKET_URL: &str = dotenv!("WEBSOCKET_URL");
 
 
 pub enum ChatAction

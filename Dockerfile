@@ -6,14 +6,14 @@ RUN mkdir -p /app/
 
 WORKDIR /app/
 
-RUN cargo init
-
 COPY . /app/
 
-RUN apt install libpq-dev
+RUN apt-get install libpq-dev
 
 RUN cargo install diesel_cli --no-default-features --features postgres
 
-EXPOSE 8080
+RUN apt-get install curl
 
-# CMD ["cargo", "run", "--release"]
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+EXPOSE 8080

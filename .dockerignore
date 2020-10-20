@@ -1,6 +1,9 @@
 /app/target
+/app/.env
 /app/.idea
+/app/web_layout/obsolete
 /app/web_layout/wasm/
 
 /yew_app/target
+/yew_app/.env
 /yew_app/.idea
