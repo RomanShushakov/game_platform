@@ -3,6 +3,8 @@ use anyhow::Error;
 use yew::format::Json;
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
 
+use std::rc::Rc;
+
 use crate::types::{AuthorizedUserResponse, WsRequest, WsResponse, PieceColor};
 use crate::components::CheckersBoard;
 use crate::components::CheckersChat;
@@ -101,10 +103,10 @@ impl GameAction
 }
 
 
-#[derive(Properties, PartialEq, Clone)]
+#[derive(Properties, Clone)]
 pub struct Props
 {
-    pub user: Option<AuthorizedUserResponse>,
+    pub user: Rc<Option<AuthorizedUserResponse>>,
 }
 
 
@@ -193,7 +195,7 @@ impl Component for CheckersGame
             {
                 let join_to_room_request = WsRequest { action: ChatAction::JoinToRoom.as_str(), data: GAME_NAME.to_string() };
                 self.websocket_task.as_mut().unwrap().send(Json(&join_to_room_request));
-                if let Some(user) = &self.props.user
+                if let Some(user) = &*self.props.user
                 {
                     let set_name_request = WsRequest { action: ChatAction::SetName.as_str(), data: format!("{}", user.user_name) };
                     self.websocket_task.as_mut().unwrap().send(Json(&set_name_request));
@@ -283,7 +285,7 @@ impl Component for CheckersGame
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        if self.props != props
+        if !Rc::ptr_eq(&self.props.user, &props.user)
         {
             self.props = props;
             true
@@ -297,16 +299,6 @@ impl Component for CheckersGame
 
     fn view(&self) -> Html
     {
-        // let disconnect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Disconnect));
-        // let connect_handle = self.link.callback(|_| Msg::WsAction(WsAction::Connect));
-        // let send_websocket_data_handle = self.link.callback(|request| Msg::WsAction(WsAction::SendWebSocketData(request)));
-        // let reset_websocket_chat_response_handle = self.link.callback(|_| Msg::WsAction(WsAction::ResetWebsocketChatResponse));
-        // let start_game_handle = self.link.callback(|_| Msg::WsAction(WsAction::StartGame));
-        // let choose_white_color_handle = self.link.callback(|_| Msg::WsAction(WsAction::ChooseWhiteColor));
-        // let choose_black_color_handle = self.link.callback(|_| Msg::WsAction(WsAction::ChooseBlackColor));
-        // let reset_websocket_game_response_handle = self.link.callback(|_| Msg::WsAction(WsAction::ResetWebsocketGameResponse));
-        // let leave_game_handle = self.link.callback(|_| Msg::WsAction(WsAction::LeaveGame));
-
         html!
         {
             <main class="main">
@@ -315,7 +307,7 @@ impl Component for CheckersGame
 
                         <div class="container">
                             < CheckersChat
-                                user=&self.props.user,
+                                user=Rc::clone(&self.props.user),
                                 is_connected=&self.state.is_connected,
                                 disconnect=self.link.callback(|_| Msg::WsAction(WsAction::Disconnect)),
                                 connect=self.link.callback(|_| Msg::WsAction(WsAction::Connect)),
@@ -333,7 +325,7 @@ impl Component for CheckersGame
                             html!
                             {
                                 <CheckersBoard
-                                    user=&self.props.user,
+                                    user=Rc::clone(&self.props.user),
                                     is_in_game=&self.state.is_in_game,
                                     send_websocket_data=self.link.callback(|request| Msg::WsAction(WsAction::SendWebSocketData(request))),
                                     piece_color=&self.state.piece_color,

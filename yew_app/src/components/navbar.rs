@@ -1,6 +1,8 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use std::rc::Rc;
+
 use crate::route::AppRoute;
 use crate::types::AuthorizedUserResponse;
 
@@ -8,8 +10,8 @@ use crate::types::AuthorizedUserResponse;
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
-    pub user: Option<AuthorizedUserResponse>,
-    pub token: Option<String>,
+    pub user: Rc<Option<AuthorizedUserResponse>>,
+    pub token: Rc<Option<String>>,
     pub sign_out: Callback<()>,
 }
 
@@ -55,7 +57,7 @@ impl NavBar
 
         html!
         {
-            if let Some(user) = &self.props.user
+            if let Some(user) = &*self.props.user
             {
                 html!
                 {

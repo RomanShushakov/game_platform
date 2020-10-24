@@ -3,6 +3,8 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::format::{Nothing, Json};
 use anyhow::Error;
 
+use std::rc::Rc;
+
 use crate::types::{UserForAllUsersResponse, UserChangeStatusRequest};
 use crate::KEY;
 
@@ -11,10 +13,10 @@ pub type FetchResponse<T> = Response<Json<Result<T, Error>>>;
 type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 
-#[derive(Properties, PartialEq, Clone)]
+#[derive(Properties, Clone)]
 pub struct Props
 {
-    pub token: Option<String>,
+    pub token: Rc<Option<String>>,
 }
 
 
@@ -113,7 +115,7 @@ impl Component for AllUsers
         {
             Msg::ShowAllUsers =>
                 {
-                    if let Some(token) = &self.props.token
+                    if let Some(token) = &*self.props.token
                     {
                         let task = self.show_all_users(token);
                         self.fetch_task = Some(task);
@@ -125,7 +127,7 @@ impl Component for AllUsers
             Msg::HideAllUsers => self.state.users = None,
             Msg::ChangeUserStatus(uid) =>
                 {
-                    if let Some(token) = &self.props.token
+                    if let Some(token) = &*self.props.token
                     {
                         let user_change_status_data = UserChangeStatusRequest { uid };
                         let task = self.change_user_status(token, user_change_status_data);
@@ -150,7 +152,7 @@ impl Component for AllUsers
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender
     {
-        if self.props != props
+        if !Rc::ptr_eq(&self.props.token, &props.token)
         {
             self.props = props;
             true

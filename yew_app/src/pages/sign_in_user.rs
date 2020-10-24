@@ -4,6 +4,8 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::format::Json;
 use anyhow::Error;
 
+use std::rc::Rc;
+
 use crate::types::{AuthorizedUserResponse, UserSignInDataRequest, UserSignInDataResponse};
 
 
@@ -14,7 +16,7 @@ type FetchCallback<T> = Callback<FetchResponse<T>>;
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
-    pub user: Option<AuthorizedUserResponse>,
+    pub user: Rc<Option<AuthorizedUserResponse>>,
     pub save_token: Callback<String>,
     pub identify_user: Callback<String>
 }
@@ -170,7 +172,7 @@ impl Component for SignInUser
             <main class="main">
                 <div class="container">
                     {
-                        if let Some(user) = &self.props.user
+                        if let Some(user) = &*self.props.user
                         {
                             html! { <h3>{ format!("Hello, {}!", user.user_name) }</h3> }
                         }

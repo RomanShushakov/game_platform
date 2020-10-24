@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use yew::prelude::*;
 use serde_json;
 
+use std::rc::Rc;
+
 
 use crate::types::{
     AuthorizedUserResponse, WsRequest, WsResponse, PieceColor, CheckerPiece, GameData, CheckerPosition,
@@ -14,7 +16,7 @@ use crate::pages::{GameAction, GAME_NAME, ChatAction};
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
-    pub user: Option<AuthorizedUserResponse>,
+    pub user: Rc<Option<AuthorizedUserResponse>>,
     pub is_in_game: bool,
     pub piece_color: Option<PieceColor>,
     pub send_websocket_data: Callback<WsRequest>,
@@ -894,7 +896,7 @@ impl Component for CheckersBoard
                             data: GAME_NAME.to_string()
                         };
                     self.props.send_websocket_data.emit(request);
-                    if let Some(user) = &self.props.user
+                    if let Some(user) = &*self.props.user
                     {
                         let request_online_users = WsRequest
                             {
@@ -980,7 +982,7 @@ impl Component for CheckersBoard
     fn view(&self) -> Html
     {
         let letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
-        let (number_sequence, letter_sequence): (Vec<usize>, Vec<usize>) =
+        let (number_sequence, letter_sequence): (Vec<u8>, Vec<u8>) =
             {
                 if let Some(color) = &self.props.piece_color
                 {
@@ -996,11 +998,11 @@ impl Component for CheckersBoard
 
         let letters_line: Html =
             {
-                letter_sequence.clone().into_iter().map(|i: usize|
+                letter_sequence.clone().into_iter().map(|i: u8|
                 {
                     html!
                     {
-                        <div class="cell_alpha">{ letters[i - 1] }</div>
+                        <div class="cell_alpha">{ letters[i as usize - 1] }</div>
                     }
                 }).collect()
             };
@@ -1017,14 +1019,14 @@ impl Component for CheckersBoard
                     { letters_line.clone() }
                 </div>
                 {
-                    for number_sequence.into_iter().map(|i: usize|
+                    for number_sequence.into_iter().map(|i: u8|
                     {
                         html!
                         {
                             <div class="line">
                                 <div class="cell_num">{ i }</div>
                                 {
-                                    for letter_sequence.clone().into_iter().map(|j: usize|
+                                    for letter_sequence.clone().into_iter().map(|j: u8|
                                     {
                                         if (i + j) % 2 == 1
                                         {
@@ -1034,7 +1036,7 @@ impl Component for CheckersBoard
                                         {
                                             if self.props.is_in_game
                                             {
-                                                { self.view_black_cells(j as u8, i as u8) }
+                                                { self.view_black_cells(j, i) }
                                             }
                                             else
                                             {

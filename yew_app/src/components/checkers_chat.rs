@@ -8,6 +8,8 @@ use std::time::Duration;
 use web_sys;
 use std::collections::HashSet;
 
+use std::rc::Rc;
+
 use crate::types::
 {
     AuthorizedUserResponse, WsRequest, ChatMessage, OnlineUser, SentInvitation, ChatMessageResponse,
@@ -27,7 +29,7 @@ type FetchCallback<T> = Callback<FetchResponse<T>>;
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
-    pub user: Option<AuthorizedUserResponse>,
+    pub user: Rc<Option<AuthorizedUserResponse>>,
     pub is_connected: bool,
     pub disconnect: Callback<()>,
     pub connect: Callback<()>,
@@ -130,7 +132,7 @@ impl CheckersChat
             {
                 let processed_message =
                     {
-                        if let Some(user) = &self.props.user
+                        if let Some(user) = &*self.props.user
                         {
                             if user.user_name == message.user_name
                             {
@@ -287,7 +289,7 @@ impl Component for CheckersChat
                     self.decline_invitations(&to_user);
                     let request = WsRequest { action: ChatAction::AcceptInvitation.as_str(), data: to_user.clone() };
                     self.props.send_websocket_data.emit(request);
-                    if let Some(user) = &self.props.user
+                    if let Some(user) = &*self.props.user
                     {
                         let join_to_room_request = WsRequest
                         {
@@ -376,7 +378,7 @@ impl Component for CheckersChat
                 {
                     self.props.reset_websocket_chat_response.emit(());
                     self.decline_invitations(&response.data);
-                    if let Some(user) = &self.props.user
+                    if let Some(user) = &*self.props.user
                     {
                         let join_to_room_request = WsRequest
                         {
@@ -447,7 +449,7 @@ impl Component for CheckersChat
                     onkeypress=self.link.callback(|e: KeyboardEvent| Msg::DefineButton(e.key_code()))
                 />
                 {
-                    if let Some(_) = &self.props.user
+                    if let Some(_) = &*self.props.user
                     {
                         html!
                         {

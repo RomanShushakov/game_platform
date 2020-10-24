@@ -1,4 +1,4 @@
-#![recursion_limit="1280"]
+#![recursion_limit="2048"]
 
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
@@ -10,6 +10,8 @@ use anyhow::Error;
 
 use yew_router::prelude::*;
 use yew_router::agent::RouteRequest;
+
+use std::rc::Rc;
 
 
 #[global_allocator]
@@ -35,8 +37,8 @@ type FetchCallback<T> = Callback<FetchResponse<T>>;
 
 struct State
 {
-    token: Option<String>,
-    user: Option<AuthorizedUserResponse>,
+    token: Rc<Option<String>>,
+    user: Rc<Option<AuthorizedUserResponse>>,
     storage: StorageService
 }
 
@@ -63,7 +65,7 @@ impl Model
 {
     fn save_token(&mut self, token: &str)
     {
-        self.state.token = Some(token.to_string());
+        self.state.token = Rc::new(Some(token.to_string()));
         self.state.storage.store(KEY, Ok(token.to_string()));
     }
 
@@ -71,7 +73,7 @@ impl Model
     fn sign_out(&mut self)
     {
         self.state.storage.remove(KEY);
-        self.state.user = None;
+        self.state.user = Rc::new(None);
         let route = Route::<()>::from(AppRoute::HomePage);
         let mut router = RouteAgentDispatcher::new();
         router.send(RouteRequest::ChangeRoute(route));
@@ -118,7 +120,7 @@ impl Component for Model
                 if let Ok(token) = storage.restore(KEY)
                 {
                     link.send_message(Msg::IdentifyUser(token.clone()));
-                    Some(token.clone())
+                    Some(token)
                 }
                 else
                 {
@@ -129,7 +131,7 @@ impl Component for Model
         Self
         {
             link,
-            state: State { storage, token, user: None },
+            state: State { storage, token: Rc::new(token), user: Rc::new(None) },
             fetch_task: None
         }
     }
@@ -148,7 +150,7 @@ impl Component for Model
                 },
             Msg::AuthorizedUser(response) =>
                 {
-                    self.state.user = response.ok();
+                    self.state.user = Rc::new(response.ok());
                 },
             Msg::NotAuthorizedUser =>
                 {
@@ -167,8 +169,8 @@ impl Component for Model
 
     fn view(&self) -> Html
     {
-        let user = self.state.user.clone();
-        let token = self.state.token.clone();
+        let user = Rc::clone(&self.state.user);
+        let token = Rc::clone(&self.state.token);
         let handle_save_token = self.link.callback(|token: String| Msg::SaveToken(token));
         let handle_identify_user = self.link.callback(|token: String| Msg::IdentifyUser(token));
 
@@ -177,11 +179,11 @@ impl Component for Model
         let render = Router::render(move |switch: AppRoute| match switch
         {
             AppRoute::SignInUser => html! { <SignInUser
-                                            user=user.clone(),
+                                            user=Rc::clone(&user),
                                             save_token=handle_save_token.clone(),
                                             identify_user=handle_identify_user.clone() /> },
             AppRoute::RegisterUser => html! { <RegisterUser /> },
-            AppRoute::UserInfo => html! { <UserInfo user=user.clone(), token=token.clone(), sign_out=handle_sign_out.clone() /> },
+            AppRoute::UserInfo => html! { <UserInfo user=Rc::clone(&user), token=Rc::clone(&token), sign_out=handle_sign_out.clone() /> },
             AppRoute::CheckersGame => html! { <CheckersGame user=user.clone() /> },
             AppRoute::HomePage => html! { <HomePage /> },
         });
@@ -189,7 +191,7 @@ impl Component for Model
         html!
         {
             <div>
-                <NavBar user=self.state.user.clone(), token=self.state.token.clone(), sign_out=self.link.callback(|_| Msg::SignOut) />
+                <NavBar user=Rc::clone(&self.state.user), token=Rc::clone(&self.state.token), sign_out=self.link.callback(|_| Msg::SignOut) />
                 <Router<AppRoute, ()> render=render />
             </div>
         }

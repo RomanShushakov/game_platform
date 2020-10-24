@@ -5,6 +5,8 @@ use anyhow::Error;
 
 use validator;
 
+use std::rc::Rc;
+
 use crate::types::{AuthorizedUserResponse, UserUpdateDataRequest};
 use crate::KEY;
 
@@ -14,8 +16,8 @@ use crate::components::AllUsers;
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props
 {
-    pub user: Option<AuthorizedUserResponse>,
-    pub token: Option<String>,
+    pub user: Rc<Option<AuthorizedUserResponse>>,
+    pub token: Rc<Option<String>>,
     pub sign_out: Callback<()>,
 }
 
@@ -242,7 +244,7 @@ impl Component for UserInfo
                 },
             Msg::UpdateUser(updated_user_data) =>
                 {
-                    if let Some(token) = &self.props.token
+                    if let Some(token) = &*self.props.token
                     {
                         let task = self.update_user(updated_user_data, token);
                         self.fetch_task = Some(task);
@@ -288,7 +290,7 @@ impl Component for UserInfo
                         else
                         {
                             {
-                                if let Some(user) = &self.props.user
+                                if let Some(user) = &*self.props.user
                                 {
                                     html!
                                     {
@@ -340,7 +342,7 @@ impl Component for UserInfo
                                             {
                                                 if user.is_superuser
                                                 {
-                                                    html! { <AllUsers token=self.props.token.clone() /> }
+                                                    html! { <AllUsers token=Rc::clone(&self.props.token) /> }
                                                 }
                                                 else
                                                 {
