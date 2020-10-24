@@ -132,15 +132,15 @@ impl PieceColor
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct CheckerPosition
 {
-    pub column: usize,
-    pub line: usize,
+    pub column: u8,
+    pub line: u8,
 }
 
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct CheckerPiece
 {
-    pub id: usize,
+    pub id: u8,
     pub is_crowned: bool,
     pub position: CheckerPosition,
 }
@@ -160,7 +160,7 @@ pub struct GameData
 #[derive(Debug)]
 pub struct AllowableMove
 {
-    pub checker_id: usize,
+    pub checker_id: u8,
     pub next_position: CheckerPosition,
     pub captured_piece_position: Option<CheckerPosition>
 }

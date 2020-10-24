@@ -5,6 +5,11 @@ authors = ["Roman <roman.a.shushakov@mail.ru>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.release]
+panic = 'abort'
+codegen-units = 1
+opt-level = 's'
+lto = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -19,3 +24,5 @@ web-sys = "0.3.45"
 yew-router = "0.14.0"
 validator = "0.11.0"
 dotenv_codegen = "0.15.0"
+
+wee_alloc = "0.4.5"

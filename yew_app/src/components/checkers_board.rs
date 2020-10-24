@@ -103,7 +103,7 @@ pub struct CheckersBoard
 
 pub enum Msg
 {
-    MoveCheckerPiece(usize, usize),
+    MoveCheckerPiece(u8, u8),
     LeaveGame,
 }
 
@@ -234,7 +234,7 @@ impl CheckersBoard
 
 
 
-    fn view_black_cells(&self, column: usize, line: usize) -> Html
+    fn view_black_cells(&self, column: u8, line: u8) -> Html
     {
         let white_checker: Html =
             {
@@ -304,22 +304,22 @@ impl CheckersBoard
                             {
                                 if self.state.checker_pieces[&PieceColor::White][idx].is_crowned
                                 {
-                                    white_crowned_checker_active.clone()
+                                    white_crowned_checker_active
                                 }
                                 else
                                 {
-                                    white_checker_active.clone()
+                                    white_checker_active
                                 }
                             }
                             else
                             {
                                 if self.state.checker_pieces[&PieceColor::White][idx].is_crowned
                                 {
-                                    white_crowned_checker.clone()
+                                    white_crowned_checker
                                 }
                                 else
                                 {
-                                    white_checker.clone()
+                                    white_checker
                                 }
                             }
                         }
@@ -340,22 +340,22 @@ impl CheckersBoard
                             {
                                 if self.state.checker_pieces[&PieceColor::Black][idx].is_crowned
                                 {
-                                    black_crowned_checker_active.clone()
+                                    black_crowned_checker_active
                                 }
                                 else
                                 {
-                                    black_checker_active.clone()
+                                    black_checker_active
                                 }
                             }
                             else
                             {
                                 if self.state.checker_pieces[&PieceColor::Black][idx].is_crowned
                                 {
-                                    black_crowned_checker.clone()
+                                    black_crowned_checker
                                 }
                                 else
                                 {
-                                    black_checker.clone()
+                                    black_checker
                                 }
                             }
                         }
@@ -474,7 +474,7 @@ impl CheckersBoard
                             checkers.push(
                                 AllowableMove
                                 {
-                                    checker_id: checker.id.clone(),
+                                    checker_id: checker.id,
                                     captured_piece_position: Some(first_position),
                                     next_position: second_position
                                 })
@@ -491,7 +491,7 @@ impl CheckersBoard
                             checkers.push(
                                 AllowableMove
                                 {
-                                    checker_id: checker.id.clone(),
+                                    checker_id: checker.id,
                                     captured_piece_position: Some(first_position),
                                     next_position: second_position
                                 })
@@ -508,7 +508,7 @@ impl CheckersBoard
                             checkers.push(
                                 AllowableMove
                                 {
-                                    checker_id: checker.id.clone(),
+                                    checker_id: checker.id,
                                     captured_piece_position: Some(first_position),
                                     next_position: second_position
                                 })
@@ -525,7 +525,7 @@ impl CheckersBoard
                             checkers.push(
                                 AllowableMove
                                 {
-                                    checker_id: checker.id.clone(),
+                                    checker_id: checker.id,
                                     captured_piece_position: Some(first_position),
                                     next_position: second_position
                                 })
@@ -561,7 +561,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -575,7 +575,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -590,7 +590,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -603,7 +603,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -619,7 +619,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -632,7 +632,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -648,7 +648,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -661,7 +661,7 @@ impl CheckersBoard
                         checkers.push(
                             AllowableMove
                             {
-                                checker_id: checker.id.clone(),
+                                checker_id: checker.id,
                                 captured_piece_position: None,
                                 next_position: second_position
                             })
@@ -725,7 +725,7 @@ impl Component for CheckersBoard
                                 {
                                     if self.state.piece_move.len() == 1
                                     {
-                                        if self.state.piece_move[0] == (CheckerPosition { column: column.clone(), line: line.clone() })
+                                        if self.state.piece_move[0] == (CheckerPosition { column, line })
                                         {
                                             self.state.piece_move = Vec::new();
                                         }
@@ -736,39 +736,39 @@ impl Component for CheckersBoard
                                                 if let Some(allow_idx) = allowable_moves
                                                     .iter()
                                                     .position(|allowable_move| allowable_move.next_position ==
-                                                        CheckerPosition { column: column.clone(), line: line.clone() })
+                                                        CheckerPosition { column, line })
                                                 {
-                                                    self.state.piece_move.push(CheckerPosition { column: column.clone(), line: line.clone() });
+                                                    self.state.piece_move.push(CheckerPosition { column, line });
 
                                                     if let Some(idx) = find_position(
                                                         &self.state.checker_pieces[color],
                                                         &self.state.piece_move[0] )
                                                     {
 
-                                                        self.state.checker_pieces.get_mut(color).unwrap()[idx].position = self.state.piece_move[1].clone();
+                                                        self.state.checker_pieces.get_mut(color).unwrap()[idx].position = self.state.piece_move[1].to_owned();
                                                         match color
                                                         {
                                                             PieceColor::White =>
                                                                 {
                                                                     if self.state.piece_move[1].line == 8
                                                                     {
-                                                                        self.state.checker_pieces.get_mut(color).unwrap()[idx.clone()].is_crowned = true;
+                                                                        self.state.checker_pieces.get_mut(color).unwrap()[idx].is_crowned = true;
                                                                     }
                                                                 },
                                                             PieceColor::Black =>
                                                                 {
                                                                     if self.state.piece_move[1].line == 1
                                                                     {
-                                                                        self.state.checker_pieces.get_mut(color).unwrap()[idx.clone()].is_crowned = true;
+                                                                        self.state.checker_pieces.get_mut(color).unwrap()[idx].is_crowned = true;
                                                                     }
                                                                 }
                                                         }
                                                     }
-                                                    if let Some(captured_piece_position) = allowable_moves[allow_idx].captured_piece_position.clone()
+                                                    if let Some(captured_piece_position) = &allowable_moves[allow_idx].captured_piece_position
                                                     {
                                                         if let Some(idx) = find_position(
                                                             &self.state.checker_pieces[&color.opposite()],
-                                                            &captured_piece_position )
+                                                            captured_piece_position )
                                                         {
                                                             self.state.checker_pieces.get_mut(&color.opposite()).unwrap().remove(idx);
                                                         }
@@ -811,11 +811,11 @@ impl Component for CheckersBoard
                                                             serde_json::to_string(
                                                                 &GameData
                                                                 {
-                                                                    opponent_piece_color: self.props.piece_color.clone().unwrap(),
+                                                                    opponent_piece_color: color.clone(),
                                                                     piece_previous_position: self.state.piece_move[0].to_owned(),
                                                                     piece_new_position: self.state.piece_move[1].to_owned(),
-                                                                    captured_piece_position: allowable_moves[allow_idx].captured_piece_position.clone(),
-                                                                    is_opponent_step: self.state.is_my_step.clone(),
+                                                                    captured_piece_position: allowable_moves[allow_idx].captured_piece_position.to_owned(),
+                                                                    is_opponent_step: self.state.is_my_step,
                                                                 }).unwrap()
                                                         };
                                                     let request = WsRequest
@@ -851,7 +851,7 @@ impl Component for CheckersBoard
                                                     if !moves.is_empty()
                                                     {
                                                         self.state.allowable_moves = Some(moves);
-                                                        self.state.piece_move.push(CheckerPosition { column: column.clone(), line: line.clone() });
+                                                        self.state.piece_move.push(CheckerPosition { column, line });
                                                     }
                                                     else { return false; }
                                                 },
@@ -869,7 +869,7 @@ impl Component for CheckersBoard
                                                                 if !moves.is_empty()
                                                                 {
                                                                     self.state.allowable_moves = Some(moves);
-                                                                    self.state.piece_move.push(CheckerPosition { column: column.clone(), line: line.clone() });
+                                                                    self.state.piece_move.push(CheckerPosition { column, line });
                                                                 }
                                                             },
                                                         None => ()
@@ -914,7 +914,7 @@ impl Component for CheckersBoard
         if self.props != props
         {
             self.props = props;
-            if let Some(response) = self.props.websocket_game_response.clone()
+            if let Some(response) = &self.props.websocket_game_response
             {
                 if response.action == GameAction::ReceivedCheckerPieceMove.as_str()
                 {
@@ -933,14 +933,14 @@ impl Component for CheckersBoard
                                 {
                                     if game_data.piece_new_position.line == 8
                                     {
-                                        self.state.checker_pieces.get_mut(color).unwrap()[idx.clone()].is_crowned = true;
+                                        self.state.checker_pieces.get_mut(color).unwrap()[idx].is_crowned = true;
                                     }
                                 },
                             PieceColor::Black =>
                                 {
                                     if game_data.piece_new_position.line == 1
                                     {
-                                        self.state.checker_pieces.get_mut(color).unwrap()[idx.clone()].is_crowned = true;
+                                        self.state.checker_pieces.get_mut(color).unwrap()[idx].is_crowned = true;
                                     }
                                 }
                         }
@@ -1034,7 +1034,7 @@ impl Component for CheckersBoard
                                         {
                                             if self.props.is_in_game
                                             {
-                                                { self.view_black_cells(j, i) }
+                                                { self.view_black_cells(j as u8, i as u8) }
                                             }
                                             else
                                             {

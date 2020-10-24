@@ -1,4 +1,4 @@
-#![recursion_limit="2048"]
+#![recursion_limit="1280"]
 
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
@@ -10,6 +10,10 @@ use anyhow::Error;
 
 use yew_router::prelude::*;
 use yew_router::agent::RouteRequest;
+
+
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 
 mod route;
@@ -173,8 +177,8 @@ impl Component for Model
         let render = Router::render(move |switch: AppRoute| match switch
         {
             AppRoute::SignInUser => html! { <SignInUser
-                                            user=user.clone()
-                                            save_token=handle_save_token.clone()
+                                            user=user.clone(),
+                                            save_token=handle_save_token.clone(),
                                             identify_user=handle_identify_user.clone() /> },
             AppRoute::RegisterUser => html! { <RegisterUser /> },
             AppRoute::UserInfo => html! { <UserInfo user=user.clone(), token=token.clone(), sign_out=handle_sign_out.clone() /> },
@@ -182,12 +186,10 @@ impl Component for Model
             AppRoute::HomePage => html! { <HomePage /> },
         });
 
-        let handle_sign_out = self.link.callback(|_| Msg::SignOut);
-
         html!
         {
             <div>
-                <NavBar user=self.state.user.clone(), token=self.state.token.clone(), sign_out=handle_sign_out.clone() />
+                <NavBar user=self.state.user.clone(), token=self.state.token.clone(), sign_out=self.link.callback(|_| Msg::SignOut) />
                 <Router<AppRoute, ()> render=render />
             </div>
         }

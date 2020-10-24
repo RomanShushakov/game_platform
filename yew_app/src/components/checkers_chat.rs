@@ -210,8 +210,8 @@ impl Component for CheckersChat
                     self.state.online_users = HashSet::new();
                     for data in &self.timeout_tasks
                     {
-                        let from_user = data.received_invitation.from_user.clone();
-                        let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: from_user };
+                        let from_user = &data.received_invitation.from_user;
+                        let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: from_user.to_string() };
                         self.props.send_websocket_data.emit(request);
                     }
                     self.timeout_tasks = Vec::new();
@@ -235,7 +235,7 @@ impl Component for CheckersChat
                 },
             Msg::SendMessage =>
                 {
-                    if let Some(message) = &self.state.message.clone()
+                    if let Some(message) = &self.state.message
                     {
                         if !message.is_empty()
                         {
@@ -339,7 +339,7 @@ impl Component for CheckersChat
                     self.props.reset_websocket_chat_response.emit(());
                     if !self.props.is_in_game
                     {
-                        self.state.online_users.insert(OnlineUser(response.data.clone()));
+                        self.state.online_users.insert(OnlineUser(response.data));
                     }
                 }
                 else if response.action == ChatAction::SomeoneConnected.as_str() // && response.data == "Someone connected"
@@ -358,7 +358,7 @@ impl Component for CheckersChat
                         TimeoutTaskData
                             {
                                 timeout_task: task,
-                                received_invitation: ReceivedInvitation { from_user: response.data.clone() }
+                                received_invitation: ReceivedInvitation { from_user: response.data }
                             }
                     );
                 }
