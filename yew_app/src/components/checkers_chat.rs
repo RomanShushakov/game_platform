@@ -213,7 +213,7 @@ impl Component for CheckersChat
                     for data in &self.timeout_tasks
                     {
                         let from_user = &data.received_invitation.from_user;
-                        let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: from_user.to_string() };
+                        let request = WsRequest { action: ChatAction::DeclineInvitation.as_str(), data: from_user.to_owned() };
                         self.props.send_websocket_data.emit(request);
                     }
                     self.timeout_tasks = Vec::new();
@@ -242,7 +242,7 @@ impl Component for CheckersChat
                         if !message.is_empty()
                         {
                             self.state.chat_messages.push(ChatMessage(format!("you: {}", message)));
-                            let request = WsRequest { action: ChatAction::SendMessage.as_str(), data: message.to_string() };
+                            let request = WsRequest { action: ChatAction::SendMessage.as_str(), data: message.to_owned() };
                             self.props.send_websocket_data.emit(request);
                             self.state.message = None;
                         }
@@ -321,7 +321,7 @@ impl Component for CheckersChat
                 else if response.action == ChatAction::SomeoneDisconnected.as_str()
                 {
                     self.state.online_users = HashSet::new();
-                    let online_users_request = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: "".to_string() };
+                    let online_users_request = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: "".to_owned() };
                     self.props.reset_websocket_chat_response.emit(());
                     self.props.send_websocket_data.emit(online_users_request);
                     if let Some(idx) = self.state.received_invitations
@@ -347,7 +347,7 @@ impl Component for CheckersChat
                 else if response.action == ChatAction::SomeoneConnected.as_str() // && response.data == "Someone connected"
                 {
                     self.state.online_users = HashSet::new();
-                    let online_users_request = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: "".to_string() };
+                    let online_users_request = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: "".to_owned() };
                     self.props.reset_websocket_chat_response.emit(());
                     self.props.send_websocket_data.emit(online_users_request);
                 }
@@ -438,11 +438,11 @@ impl Component for CheckersChat
                         {
                             if let Some(message) = &self.state.message
                             {
-                                message.to_string()
+                                message.to_owned()
                             }
                             else
                             {
-                                "".to_string()
+                                "".to_owned()
                             }
                         }
                     oninput=self.link.callback(|d: InputData| Msg::UpdateEditMessage(d.value))

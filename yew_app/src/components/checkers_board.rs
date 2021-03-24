@@ -893,7 +893,7 @@ impl Component for CheckersBoard
                     let request = WsRequest
                         {
                             action: GameAction::SendLeaveGameMessage.as_str(),
-                            data: GAME_NAME.to_string()
+                            data: GAME_NAME.to_owned()
                         };
                     self.props.send_websocket_data.emit(request);
                     if let Some(user) = &*self.props.user
@@ -901,7 +901,7 @@ impl Component for CheckersBoard
                         let request_online_users = WsRequest
                             {
                                 action: ChatAction::RequestOnlineUsers.as_str(),
-                                data: format!("{}", user.user_name)
+                                data: user.user_name.to_owned()
                             };
                         self.props.send_websocket_data.emit(request_online_users);
                     }

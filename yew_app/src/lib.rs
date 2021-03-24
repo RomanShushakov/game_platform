@@ -184,7 +184,7 @@ impl Component for Model
                                             identify_user=handle_identify_user.clone() /> },
             AppRoute::RegisterUser => html! { <RegisterUser /> },
             AppRoute::UserInfo => html! { <UserInfo user=Rc::clone(&user), token=Rc::clone(&token), sign_out=handle_sign_out.clone() /> },
-            AppRoute::CheckersGame => html! { <CheckersGame user=user.clone() /> },
+            AppRoute::CheckersGame => html! { <CheckersGame user=Rc::clone(&user) /> },
             AppRoute::HomePage => html! { <HomePage /> },
         });
 

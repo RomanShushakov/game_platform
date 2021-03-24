@@ -82,7 +82,7 @@ impl UserInfo
                 {
                     if !user_name.is_empty()
                     {
-                        Some(user_name.to_string())
+                        Some(user_name.to_owned())
                     }
                     else { None }
                 }
@@ -95,7 +95,7 @@ impl UserInfo
                 {
                     if !email.is_empty()
                     {
-                        Some(email.to_string())
+                        Some(email.to_owned())
                     }
                     else { None }
                 }
@@ -108,7 +108,7 @@ impl UserInfo
                 {
                     if !password.is_empty()
                     {
-                        Some(password.to_string())
+                        Some(password.to_owned())
                     }
                     else { None }
                 }
@@ -121,7 +121,7 @@ impl UserInfo
                 {
                     if !password.is_empty()
                     {
-                        Some(password.to_string())
+                        Some(password.to_owned())
                     }
                     else { None }
                 }

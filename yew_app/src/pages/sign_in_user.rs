@@ -85,7 +85,7 @@ impl SignInUser
             {
                 if !password.is_empty() && !user_name.is_empty()
                 {
-                    return Some(UserSignInDataRequest { user_name: user_name.to_string(), password: password.to_string() })
+                    return Some(UserSignInDataRequest { user_name: user_name.to_owned(), password: password.to_owned() })
                 }
             }
         }
@@ -138,13 +138,13 @@ impl Component for SignInUser
                     let user_data = response.ok();
                     if let Some(user_data) = user_data
                     {
-                        self.props.save_token.emit(user_data.access_token.to_string());
-                        self.props.identify_user.emit(user_data.access_token.to_string());
+                        self.props.save_token.emit(user_data.access_token.to_owned());
+                        self.props.identify_user.emit(user_data.access_token.to_owned());
                     }
                 },
             Msg::UnsuccessfulSignIn =>
                 {
-                    self.state.error_message = Some("Incorrect user name or password.".to_string());
+                    self.state.error_message = Some("Incorrect user name or password.".to_owned());
                 }
         }
         true

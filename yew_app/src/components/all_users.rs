@@ -197,14 +197,14 @@ impl Component for AllUsers
                                             html!
                                             {
                                                 <tr>
-                                                    <td>{ user.user_name.to_string() }</td>
-                                                    <td>{ user.email.to_string() }</td>
-                                                    <td>{ user.is_active.to_string() }</td>
+                                                    <td>{ user.user_name.to_owned() }</td>
+                                                    <td>{ user.email.to_owned() }</td>
+                                                    <td>{ user.is_active.to_owned() }</td>
                                                     <td>
                                                         {
                                                             if user.is_active
                                                             {
-                                                                let uid = user.id.to_string();
+                                                                let uid = user.id.to_owned();
                                                                 html!
                                                                 {
                                                                     <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>
@@ -214,7 +214,7 @@ impl Component for AllUsers
                                                             }
                                                             else
                                                             {
-                                                                let uid = user.id.to_string();
+                                                                let uid = user.id.to_owned();
                                                                 html!
                                                                 {
                                                                     <button onclick=self.link.callback(move |_| Msg::ChangeUserStatus(uid.clone()))>

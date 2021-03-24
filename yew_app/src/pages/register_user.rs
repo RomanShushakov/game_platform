@@ -57,7 +57,7 @@ impl RegisterUser
                     if !password.is_empty() && !email.is_empty() && !user_name.is_empty()
                     {
                         return Some(UserRegisterData {
-                            user_name: user_name.to_string(), email: email.to_string(), password: password.to_string()
+                            user_name: user_name.to_owned(), email: email.to_owned(), password: password.to_owned()
                         })
                     }
                 }

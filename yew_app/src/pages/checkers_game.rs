@@ -193,13 +193,13 @@ impl Component for CheckersGame
         {
             if !self.state.is_chat_room_defined
             {
-                let join_to_room_request = WsRequest { action: ChatAction::JoinToRoom.as_str(), data: GAME_NAME.to_string() };
+                let join_to_room_request = WsRequest { action: ChatAction::JoinToRoom.as_str(), data: GAME_NAME.to_owned() };
                 self.websocket_task.as_mut().unwrap().send(Json(&join_to_room_request));
                 if let Some(user) = &*self.props.user
                 {
-                    let set_name_request = WsRequest { action: ChatAction::SetName.as_str(), data: format!("{}", user.user_name) };
+                    let set_name_request = WsRequest { action: ChatAction::SetName.as_str(), data: user.user_name.to_owned() };
                     self.websocket_task.as_mut().unwrap().send(Json(&set_name_request));
-                    let request_online_users = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: format!("{}", user.user_name) };
+                    let request_online_users = WsRequest { action: ChatAction::RequestOnlineUsers.as_str(), data: user.user_name.to_owned() };
                     self.websocket_task.as_mut().unwrap().send(Json(&request_online_users));
                 }
                 self.state.is_chat_room_defined = true;
