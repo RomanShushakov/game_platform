@@ -34,6 +34,6 @@ rand = "0.8.3"
 byteorder = "1.4.3"
 futures = "0.3.13"
 
-lettre = "0.9.3"
+lettre = "0.9.6"
 lettre_email = "0.9.4"
 mime = "0.3.16"
